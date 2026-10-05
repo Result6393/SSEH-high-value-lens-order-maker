@@ -1,6 +1,6 @@
 {
   "name": "sseh-high-value-lens-order-maker",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Phone web app that prepares toric IOL approval emails from a biometry photo",
   "scripts": {
     "postinstall": "node scripts/copy-ocr-assets.mjs",

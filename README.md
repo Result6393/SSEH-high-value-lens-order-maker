@@ -10,8 +10,9 @@ toric IOL approval email for the lens coordinators:
 3. Pick the lens: Tecnis ZCU (default) or Clareon. The power is read from that
    lens's table for the chosen eye; on a Barrett Toric page the recommended toric
    model (e.g. ZCU300, CNA0T5) is filled in too, otherwise pick it.
-4. Optionally add more images ("Take another" / "Add images") to attach as well.
-5. Tap **Prepare email**: the SSEH high cost lens order form (filled in), the
+4. Check the **Diagnosis** text for the order form (defaults to "High cyl / astigmatism >2"; change it if you need).
+5. Optionally add more images ("Take another" / "Add images") to attach as well.
+6. Tap **Prepare email**: the SSEH high cost lens order form (filled in), the
    biometry photo and any extra images go to the phone's share sheet. Choose Outlook, paste your recipients
    (already copied) into To, then send.
 

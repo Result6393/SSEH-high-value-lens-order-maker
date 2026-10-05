@@ -19,6 +19,8 @@ export interface RequestData {
   /** Spherical power in dioptres, e.g. "22" or "+22.0". */
   lensPower: string;
   company: string;
+  /** Free text for the order form's Diagnosis box. */
+  diagnosis: string;
   /** yyyy-mm-dd from <input type="date">, optional. */
   surgeryDate: string;
 }

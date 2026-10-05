@@ -4,6 +4,14 @@ import type { RequestData, Settings } from './types';
 
 export const TEMPLATE_URL = 'forms/toric-lens-order-form.pdf';
 
+/** What the Diagnosis box says unless the user changes it. */
+export const DEFAULT_DIAGNOSIS = 'High cyl / astigmatism >2';
+
+// The Diagnosis box has two rows (rules at y = 625, 651, 677 on the 100 dpi render).
+const DIAGNOSIS_ROWS = [[625, 651], [651, 677]] as const;
+const DIAGNOSIS_X = 137;
+const DIAGNOSIS_MAX_WIDTH = 580;
+
 // The SSEH "Other High Cost Implants and Prosthesis" form has no fillable
 // fields, so values are drawn at fixed positions. Coordinates are measured in
 // pixels on a 100 dpi render of the A4 page (x, row top, row bottom).
@@ -46,11 +54,10 @@ export async function fillOrderForm(template: ArrayBuffer | Uint8Array, req: Req
   put('vmo', req.vmo);
   put('submittedBy', settings.clinicianName);
   put('contact', settings.contactNumber);
-  // The template has "ZCU" / "J&J" printed in these rows; blank them first.
-  for (const [top, bottom] of [[507, 538], [538, 569]]) whiteout(page, 247, top + 2, 725, bottom - 2);
   put('lens', `${req.lensModel} ${formatPower(req.lensPower)}`, bold, 12);
   put('company', req.company, font, 12);
   put('eye', eyeLine(req), bold, 12);
+  drawDiagnosis(page, font, req.diagnosis);
 
   doc.setTitle(`High cost lens order - toric - ${req.eye} eye`);
   return doc.save();
@@ -71,13 +78,48 @@ function draw(page: PDFPage, font: PDFFont, cell: keyof typeof CELLS, text: stri
   page.drawText(text, { x: x * PX, y, size, font, color: BLUE });
 }
 
-function whiteout(page: PDFPage, x0: number, top: number, x1: number, bottom: number): void {
-  page.drawRectangle({
-    x: x0 * PX,
-    y: page.getHeight() - bottom * PX,
-    width: (x1 - x0) * PX,
-    height: (bottom - top) * PX,
-    color: rgb(1, 1, 1),
+/**
+ * Splits text into lines no wider than `maxWidth`. Explicit line breaks are kept;
+ * a single word wider than the line is left whole (the caller shrinks the font).
+ */
+export function wrapLines(text: string, widthOf: (s: string) => number, maxWidth: number): string[] {
+  const lines: string[] = [];
+  for (const paragraph of text.replace(/\r\n?/g, '\n').split('\n')) {
+    let line = '';
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && widthOf(next) > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = next;
+      }
+    }
+    lines.push(line);
+  }
+  while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  return lines;
+}
+
+/** Writes the diagnosis into the box's two rows, shrinking the text until it fits. */
+function drawDiagnosis(page: PDFPage, font: PDFFont, text: string): void {
+  if (!text.trim()) return;
+  const maxWidth = DIAGNOSIS_MAX_WIDTH * PX;
+  let size = 13;
+  let lines = wrapLines(text.trim(), (t) => font.widthOfTextAtSize(t, size), maxWidth);
+  while (size > 7 && (lines.length > DIAGNOSIS_ROWS.length || lines.some((l) => font.widthOfTextAtSize(l, size) > maxWidth))) {
+    size -= 0.5;
+    lines = wrapLines(text.trim(), (t) => font.widthOfTextAtSize(t, size), maxWidth);
+  }
+  lines.slice(0, DIAGNOSIS_ROWS.length).forEach((line, i) => {
+    const [top, bottom] = DIAGNOSIS_ROWS[i];
+    page.drawText(line, {
+      x: DIAGNOSIS_X * PX,
+      y: page.getHeight() - ((top + bottom) / 2) * PX - size * 0.35,
+      size,
+      font,
+      color: BLUE,
+    });
   });
 }
 

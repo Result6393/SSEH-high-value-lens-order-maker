@@ -6,7 +6,7 @@ import { LensMemory } from './lens-memory';
 import { FAMILIES, formatPower, inferEye, modelForCylinder, type Platform } from './lenses';
 import { prepareAttachment, prepareImage } from './image';
 import { readPrintout } from './ocr';
-import { TEMPLATE_URL, fillOrderForm } from './pdf';
+import { DEFAULT_DIAGNOSIS, TEMPLATE_URL, fillOrderForm } from './pdf';
 import { loadSettings, saveSettings } from './settings';
 import { shareEmail, type EmailDraft } from './share';
 import type { Eye, RequestData } from './types';
@@ -37,6 +37,7 @@ const el = {
   axis: input('axis'),
   vmo: input('vmo'),
   surgeryDate: input('surgery-date'),
+  diagnosis: $<HTMLTextAreaElement>('diagnosis'),
   lensModel: $<HTMLSelectElement>('lens-model'),
   lensModelOther: input('lens-model-other'),
   lensPower: input('lens-power'),
@@ -64,6 +65,8 @@ let photoToken = 0;
 $('version').textContent = `v${__APP_VERSION__}`;
 $('build-info').textContent = `Version ${__APP_VERSION__} (build ${__APP_BUILD__})`;
 document.title = `Toric IOL Request v${__APP_VERSION__}`;
+
+el.diagnosis.value = DEFAULT_DIAGNOSIS;
 
 const settings = loadSettings();
 el.recipients.value = settings.recipients;
@@ -297,6 +300,7 @@ function currentRequest(): RequestData | undefined {
     astAxis: el.axis.value.trim(),
     vmo: el.vmo.value.trim(),
     surgeryDate: el.surgeryDate.value,
+    diagnosis: el.diagnosis.value.trim(),
     lensModel: (selectedPlatform() === 'Other' ? el.lensModelOther.value : el.lensModel.value).trim().toUpperCase(),
     lensPower: el.lensPower.value.trim(),
     company: platform === 'Other' ? el.company.value.trim() : FAMILIES[platform].company,
@@ -413,6 +417,7 @@ $('reset').addEventListener('click', () => {
   renderExtras();
   el.extrasStatus.hidden = true;
   for (const i of patientInputs) i.value = '';
+  el.diagnosis.value = DEFAULT_DIAGNOSIS; // free text may name the patient, so it is never saved
   el.mrnWarning.hidden = true;
   lensMemory.clear();
   document.querySelectorAll<HTMLInputElement>('input[name="eye"]').forEach((r) => (r.checked = false));

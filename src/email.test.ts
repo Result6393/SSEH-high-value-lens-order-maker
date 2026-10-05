@@ -4,7 +4,7 @@ import type { RequestData, Settings } from './types';
 
 const req: RequestData = {
   eye: 'Right', surname: 'Citizen', firstName: 'Jane', mrn: '1234567', dob: '01/02/1950',
-  astK: '2.39', astAxis: '60', vmo: '', surgeryDate: '', lensModel: 'ZCU300', lensPower: '22', company: 'J&J',
+  astK: '2.39', astAxis: '60', vmo: '', surgeryDate: '', lensModel: 'ZCU300', lensPower: '22', company: 'J&J', diagnosis: 'High cyl / astigmatism >2',
 };
 const settings: Settings = { recipients: '', clinicianName: 'Thomas Desmond', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '' };
 
