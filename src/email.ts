@@ -8,7 +8,7 @@ export function emailSubject(req: RequestData): string {
 }
 
 /**
- * Default email text. Placeholders: `{patient}` ("SURNAME, First"), `{mrn}`,
+ * Default email text. Placeholders: `{patient}` (the name as entered), `{mrn}`,
  * `{lens}` ("ZCU300 +22.0D") and `{name}` (the sender's first name).
  */
 export const DEFAULT_EMAIL_BODY = [
@@ -23,11 +23,16 @@ export const DEFAULT_EMAIL_BODY = [
   '{name}',
 ].join('\n');
 
-/** "SURNAME, First", as on the printout. */
-export function patientName(req: Pick<RequestData, 'surname' | 'firstName'>): string {
-  const surname = req.surname.trim().toUpperCase();
-  const first = req.firstName.trim();
-  return first ? `${surname}, ${first}` : surname;
+/** The patient's name as typed, with stray whitespace removed. */
+export function patientName(req: Pick<RequestData, 'name'>): string {
+  return req.name.trim().replace(/\s+/g, ' ');
+}
+
+/** "SURNAME, First", as on the printout, for filling the single name field from a read. */
+export function joinName(surname: string, firstName: string): string {
+  const last = surname.trim().toUpperCase();
+  const first = firstName.trim();
+  return first ? `${last}, ${first}` : last;
 }
 
 /** "ZCU300 +22.0D": the lens model and its power as written on the order. */
@@ -60,7 +65,7 @@ export function tutoplastBody(settings: Settings, req: TutoplastRequest): string
   return render(settings.tutoplastEmailBody, DEFAULT_TUTOPLAST_EMAIL_BODY, settings, req, req.implant.trim());
 }
 
-function render(custom: string, stock: string, settings: Settings, req: Pick<RequestData, 'surname' | 'firstName' | 'mrn'>, lens: string): string {
+function render(custom: string, stock: string, settings: Settings, req: Pick<RequestData, 'name' | 'mrn'>, lens: string): string {
   const firstName = settings.clinicianName.replace(/^(dr\.?|doctor)\s+/i, '').split(/\s+/)[0] ?? '';
   return (custom.trim() ? custom : stock)
     .replace(/\r\n?/g, '\n')
@@ -77,10 +82,9 @@ export function attachmentStem(req: Pick<RequestData, 'mrn' | 'eye'>): string {
 }
 
 /** The patient checks both order types share. */
-export function validatePatient(req: Pick<RequestData, 'surname' | 'firstName' | 'mrn' | 'dob'>): string[] {
+export function validatePatient(req: Pick<RequestData, 'name' | 'mrn' | 'dob'>): string[] {
   const problems: string[] = [];
-  if (!req.surname.trim()) problems.push('Surname is missing.');
-  if (!req.firstName.trim()) problems.push('First name is missing.');
+  if (!req.name.trim()) problems.push('Name is missing.');
   if (!req.mrn.trim()) problems.push('MRN is missing.');
   if (req.dob && !/^\d{2}\/\d{2}\/\d{4}$/.test(req.dob)) problems.push('Date of birth should be dd/mm/yyyy.');
   return problems;

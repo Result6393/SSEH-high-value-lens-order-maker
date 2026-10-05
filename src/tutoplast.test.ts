@@ -4,7 +4,7 @@ import { DEFAULT_TUTOPLAST_EMAIL_BODY, tutoplastBody, tutoplastSubject } from '.
 import type { Settings, TutoplastRequest } from './types';
 
 const req: TutoplastRequest = {
-  eye: 'Left', surname: 'Citizen', firstName: 'Jane', mrn: '1234567', dob: '01/02/1950', vmo: '', surgeryDate: '',
+  eye: 'Left', name: 'CITIZEN, Jane', mrn: '1234567', dob: '01/02/1950', vmo: '', surgeryDate: '',
   implant: 'Tutoplast', company: 'Tutogen', diagnosis: TUTOPLAST_DIAGNOSES[1],
 };
 const settings: Settings = { recipients: '', clinicianName: 'Dr Jo Bloggs', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '' };
@@ -19,7 +19,7 @@ describe('tutoplast order', () => {
 
   it('validates', () => {
     expect(validateTutoplast(req, TUTOPLAST_DIAGNOSES[1])).toEqual([]);
-    expect(validateTutoplast({ ...req, mrn: '', surname: '' }, TUTOPLAST_DIAGNOSES[1])).toEqual(['Surname is missing.', 'MRN is missing.']);
+    expect(validateTutoplast({ ...req, mrn: '', name: '' }, TUTOPLAST_DIAGNOSES[1])).toEqual(['Name is missing.', 'MRN is missing.']);
     expect(validateTutoplast({ ...req, diagnosis: '' }, '')).toEqual(['Choose a diagnosis.']);
     expect(validateTutoplast({ ...req, diagnosis: '' }, OTHER_DIAGNOSIS)).toEqual(['Enter the diagnosis text.']);
     expect(validateTutoplast({ ...req, implant: ' ', company: '' }, TUTOPLAST_DIAGNOSES[1])).toEqual(['Implant is missing.', 'Company is missing.']);

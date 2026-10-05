@@ -1,5 +1,5 @@
 import './style.css';
-import { DEFAULT_EMAIL_BODY, DEFAULT_TUTOPLAST_EMAIL_BODY, TORIC_THRESHOLD_D, attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
+import { DEFAULT_EMAIL_BODY, joinName, DEFAULT_TUTOPLAST_EMAIL_BODY, TORIC_THRESHOLD_D, attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
 import { extractBiometry, type Extracted } from './extract';
 import { suggestLenses, type LensSuggestions } from './lens-table';
 import { LensMemory } from './lens-memory';
@@ -34,8 +34,7 @@ const el = {
   ocrStatus: $('ocr-status'),
   mrn: input('mrn'),
   mrnWarning: $('mrn-warning'),
-  surname: input('surname'),
-  firstName: input('first-name'),
+  name: input('name'),
   dob: input('dob'),
   astK: input('astk'),
   axis: input('axis'),
@@ -54,7 +53,7 @@ const el = {
   send: $<HTMLButtonElement>('send'),
   sendStatus: $('send-status'),
 };
-const patientInputs = [el.mrn, el.surname, el.firstName, el.dob, el.astK, el.axis, el.surgeryDate, el.lensPower, el.lensModelOther, el.company];
+const patientInputs = [el.mrn, el.name, el.dob, el.astK, el.axis, el.surgeryDate, el.lensPower, el.lensModelOther, el.company];
 
 // Patient state lives only in these variables and the form fields.
 let photo: Blob | undefined;
@@ -189,8 +188,7 @@ async function onPhoto(file: File): Promise<void> {
       eyeNote = ` ${guess.eye.toUpperCase()} eye selected: ${guess.reason}. Change it if that's wrong.`;
     }
     el.mrn.value = extracted.mrn;
-    el.surname.value = extracted.surname;
-    el.firstName.value = extracted.firstName;
+    el.name.value = joinName(extracted.surname, extracted.firstName);
     el.dob.value = extracted.dob;
     el.mrnWarning.hidden = !extracted.mrnUncertain;
     fillAstK();
@@ -309,8 +307,7 @@ function currentRequest(): RequestData | undefined {
   return {
     eye,
     mrn: el.mrn.value.trim(),
-    surname: el.surname.value.trim(),
-    firstName: el.firstName.value.trim(),
+    name: el.name.value.trim(),
     dob: el.dob.value.trim(),
     astK: el.astK.value.trim(),
     astAxis: el.axis.value.trim(),

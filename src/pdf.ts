@@ -20,8 +20,7 @@ const CELLS = {
   dateRequested: [347, 183, 222],
   surgeryDate: [347, 262, 301],
   mrn: [508, 183, 222],
-  surname: [508, 222, 262],
-  firstName: [508, 262, 301],
+  name: [508, 222, 262],
   dob: [506, 301, 325],
   age: [600, 301, 325],
   vmo: [252, 406, 447],
@@ -32,15 +31,14 @@ const CELLS = {
   eye: [252, 569, 599],
 } as const satisfies Record<string, readonly [number, number, number]>;
 // Max text width per cell, same pixel units.
-const WIDTH = { dateRequested: 74, surgeryDate: 74, mrn: 210, surname: 210, firstName: 210, dob: 86, age: 118, vmo: 155, submittedBy: 150, contact: 100, lens: 450, company: 450, eye: 470 };
+const WIDTH = { dateRequested: 74, surgeryDate: 74, mrn: 210, name: 210, dob: 86, age: 118, vmo: 155, submittedBy: 150, contact: 100, lens: 450, company: 450, eye: 470 };
 
 const BLUE = rgb(0, 0.47, 0.83);
 
 /** What goes into the form's boxes; the toric and tutoplast orders differ only in these. */
 interface FormContent {
   mrn: string;
-  surname: string;
-  firstName: string;
+  name: string;
   dob: string;
   vmo: string;
   surgeryDate: string;
@@ -69,8 +67,7 @@ async function fillForm(template: ArrayBuffer | Uint8Array, form: FormContent, s
   put('dateRequested', formatDate(today));
   if (form.surgeryDate) put('surgeryDate', formatDate(new Date(`${form.surgeryDate}T00:00`)));
   put('mrn', form.mrn);
-  put('surname', form.surname.toUpperCase());
-  put('firstName', form.firstName);
+  put('name', form.name); // one field for the whole name; it goes in the Surname box
   put('dob', form.dob);
   const age = ageOn(form.dob, today);
   if (age !== undefined) put('age', `Age ${age}`);
