@@ -73,6 +73,24 @@ describe('Barrett Toric page (real photo, OS only)', () => {
   });
 });
 
+describe('one-eye Barrett Universal II page, tables in a different order (real photo)', () => {
+  const photo = load('iolmaster-700-os-photo.json');
+
+  it('classifies tables by name, not position, and finds only the left eye', () => {
+    const found = findLensTables(photo.passes[photo.passes.length - 1], 970);
+    expect(found.map((r) => `${r.eye} ${r.platform} ${r.label}`)).toEqual(['Left CNA0T Clareon CNA 0Tx', 'Left ZCU ZCB00']);
+  });
+
+  it('suggests ZCB00 +20.5 (exact 20.38) and Clareon +20.0 (exact 20.24)', () => {
+    expect(suggestLenses(photo.tables)).toEqual({
+      Left: {
+        ZCU: { power: 20.5, uncertain: false, label: 'ZCB00' },
+        CNA0T: { power: 20, uncertain: false, label: 'Clareon CNA 0Tx' },
+      },
+    });
+  });
+});
+
 describe('pickCylinder', () => {
   it('takes the middle of three models, or the only one', () => {
     expect(pickCylinder('3753.75+0.10@90\n3003.00+041@\n225225+091@0')).toBe(3);

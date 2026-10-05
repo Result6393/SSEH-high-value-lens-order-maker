@@ -32,6 +32,22 @@ describe('extractBiometry', () => {
     expect(extractBiometry(passes)).toMatchObject({ surname: 'KNIGHT', firstName: 'Tess', mrn: '3721234' });
   });
 
+  it('reads a real one-eye (OS) page photo with pen marks over the labels', () => {
+    const { passes }: { passes: OcrPass[] } = JSON.parse(readFileSync(new URL('../test/fixtures/iolmaster-700-os-photo.json', import.meta.url), 'utf8'));
+    const r = extractBiometry(passes);
+    expect(r).toMatchObject({ surname: 'LAWSON', mrn: '1265432' });
+    expect(r.astK).toEqual({ Right: { power: '0.75', axis: '16' }, Left: { power: '0.90', axis: '145' } });
+  });
+
+  it('reads Ast. K with the D misread as 0 and stops before Ast. TK', () => {
+    const page = 'AL 23.70    AL 23.79\nACD 5.22    ACD 3.17\nLT 0.14    LT 3.79\nAstK +0750 @ 16° ASLTK +092D    AstK (+0900 @145° Ast. TK +0.97D';
+    expect(extract(page).astK).toEqual({ Right: { power: '0.75', axis: '16' }, Left: { power: '0.90', axis: '145' } });
+  });
+
+  it('finds "SURNAME, First" above Date of birth when the label is unreadable', () => {
+    expect(extract('Palit  \\_  LAWSON, Mark  7\nDate of birth 12/07/1951')).toMatchObject({ surname: 'LAWSON', firstName: 'Mark' });
+  });
+
   it('tolerates OCR dropping the "i" in Patient', () => {
     expect(extract('Patent    KNIGHT, Tess\nPatent ID 3721234')).toMatchObject({ surname: 'KNIGHT', mrn: '3721234' });
   });

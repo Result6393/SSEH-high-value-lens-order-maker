@@ -30,16 +30,17 @@ export interface TableRegion {
   toric?: Box;
 }
 
-const isBarrett = (t: string) => /^Barr?ett$/i.test(t);
-const isFormulaName = (t: string) => /^(Tor|Univ)/i.test(t);
+// OCR variants seen: "Barn", "[Barren", "[garrett", "Unwersai", "Tore".
+const isBarrett = (t: string) => /^\W*Barr?ett\W*$/i.test(t);
+const isFormulaName = (t: string) => /^\W*(Tor|Un[iw])/i.test(t);
 
-/** "Barrett" (or OCR variants like "Barn") followed by "Toric"/"Universal". */
+/** "Barrett" (or an OCR variant) followed by "Toric"/"Universal". */
 function formulaAnchors(line: OcrLine): { word: OcrWord; toric: boolean }[] {
   const out: { word: OcrWord; toric: boolean }[] = [];
   line.words.forEach((w, i) => {
     const next = line.words[i + 1]?.text ?? '';
-    if (isBarrett(w.text) || (/^Bar\w{0,4}$/i.test(w.text) && isFormulaName(next))) {
-      out.push({ word: w, toric: /^Tor/i.test(next) });
+    if (isBarrett(w.text) || (/^\W*[BbGg]arr?\w{0,4}\W*$/.test(w.text) && isFormulaName(next))) {
+      out.push({ word: w, toric: /^\W*Tor/i.test(next) });
     }
   });
   return out;

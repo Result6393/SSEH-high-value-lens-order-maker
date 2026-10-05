@@ -117,7 +117,12 @@ function findName(lines: string[]): { surname: string; firstName: string } | und
   // OCR may drop or swap the "i": "Patent", "Patlent".
   const single = labelled(lines, /\b(?:pat[il1]?ent\s*name|pat[il1]?ent(?!\s*[i1l]\s*d\b)|name)\b/i);
   if (single) return splitName(single);
-  return last ? { surname: last, firstName: '' } : undefined;
+  if (last) return { surname: last, firstName: '' };
+
+  // Label unreadable (e.g. pen marks): "SURNAME, First" on the line above "Date of birth".
+  const dob = lines.findIndex((l) => /date\s*of\s*b/i.test(l));
+  const m = dob > 0 ? /\b([A-Z][A-Z'’-]+),\s*([A-Z][a-z'’-]+(?: [A-Z][a-z'’-]+)*)/.exec(lines[dob - 1]) : null;
+  return m ? { surname: m[1], firstName: m[2] } : undefined;
 }
 
 function labelled(lines: string[], label: RegExp): string | undefined {
@@ -181,9 +186,13 @@ function findAstK(lines: OcrLine[]): Partial<Record<Eye, AstK>> {
       if (/^Ast\.?K$/i.test(w.text)) next = i + 1;
       else if (/^Ast\.?$/i.test(w.text) && words[i + 1]?.text === 'K') next = i + 2;
       else return;
-      const end = words.findIndex((v, j) => j >= next && /^Ast/i.test(v.text));
-      const seg = words.slice(next, end < 0 ? next + 5 : end).map((v) => v.text).join(' ');
-      found.push({ x: w.x0, value: parseAstK(seg) });
+      // The value and axis follow; stop at the next label (e.g. "Ast. TK", OCR'd "ASLTK").
+      const seg: string[] = [];
+      for (const v of words.slice(next, next + 4)) {
+        if (/[A-Za-z]{2,}/.test(v.text)) break;
+        seg.push(v.text);
+      }
+      found.push({ x: w.x0, value: parseAstK(seg.join(' ')) });
     });
   }
 
@@ -199,7 +208,8 @@ function findAstK(lines: OcrLine[]): Partial<Record<Eye, AstK>> {
 }
 
 function parseAstK(seg: string): AstK | undefined {
-  const p = /([+-]?)(\d{1,2})[.,]?(\d{2})\s*D/.exec(seg);
+  // "+0.75 D", "+075D", or with the D misread as 0: "+0750", "(+0900".
+  const p = /^\W*([+-]?)(\d)[.,]?(\d{2})(?:\s*D|0)?(?=\s|$)/.exec(seg);
   if (!p) return undefined;
   const a = /(?:@|°)\s*(\d{1,3})|(\d{1,3})\s*°/.exec(seg.slice(p.index + p[0].length));
   const axis = a ? Number(a[1] ?? a[2]) : NaN;
