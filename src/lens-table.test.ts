@@ -54,7 +54,7 @@ describe('Barrett Universal II page (real photo, both eyes)', () => {
   });
 
   it('finds the tables despite garbled lens names, OD left of OS', () => {
-    const found = findLensTables(photo.passes[photo.passes.length - 1], 1500);
+    const found = findLensTables(photo.passes[photo.passes.length - 1], 2400);
     expect(found.map((r) => `${r.eye} ${r.platform}`).sort()).toEqual(['Left CNA0T', 'Left ZCU', 'Right CNA0T', 'Right ZCU']);
     expect(found.every((r) => (r.eye === 'Right' ? r.power.x0 < 700 : r.power.x0 > 650))).toBe(true);
     expect(found.every((r) => !r.toric)).toBe(true);
@@ -65,7 +65,7 @@ describe('Barrett Toric page (real photo, OS only)', () => {
   const photo = load('iolmaster-700-toric-photo.json');
 
   it('finds the ZCT table for the left eye only, and ignores AcrySof tables', () => {
-    const found = findLensTables(photo.passes[photo.passes.length - 1], 1035);
+    const found = findLensTables(photo.passes[photo.passes.length - 1], 2116);
     expect(found.map((r) => `${r.eye} ${r.platform} ${r.label}`)).toEqual(['Left ZCU ZCT']);
     expect(found.every((r) => r.toric)).toBe(true);
   });
@@ -82,7 +82,7 @@ describe('one-eye Barrett Universal II page, tables in a different order (real p
   const photo = load('iolmaster-700-os-photo.json');
 
   it('classifies tables by name, not position, and finds only the left eye', () => {
-    const found = findLensTables(photo.passes[photo.passes.length - 1], 970);
+    const found = findLensTables(photo.passes[photo.passes.length - 1], 2400);
     expect(found.map((r) => `${r.eye} ${r.platform} ${r.label}`)).toEqual(['Left CNA0T Clareon CNA 0Tx', 'Left ZCU ZCB00']);
   });
 
@@ -100,7 +100,7 @@ describe('both-eye page with monofocal and Barrett Toric TK tables (real photo)'
   const photo = load('iolmaster-700-both-toric-photo.json');
 
   it('prefers the toric ZCT table over ZCB00, ignores other lenses, finds no Clareon', () => {
-    const found = findLensTables(photo.passes[photo.passes.length - 1], 976);
+    const found = findLensTables(photo.passes[photo.passes.length - 1], 2400);
     expect(found.map((r) => `${r.eye} ${r.platform} ${r.label}`).sort()).toEqual(['Left ZCU ZCT', 'Right ZCU ZCT']);
   });
 
@@ -108,6 +108,22 @@ describe('both-eye page with monofocal and Barrett Toric TK tables (real photo)'
     expect(suggestLenses(photo.tables)).toEqual({
       Right: { ZCU: { power: 17, uncertain: true, label: 'ZCT', cyl: 3 } },
       Left: { ZCU: { power: 16, uncertain: false, label: 'ZCT', cyl: 1.5 } },
+    });
+  });
+});
+
+describe('small tilted photo with the lens tables in the usual order (real photo)', () => {
+  const photo = load('iolmaster-700-walt-photo.json');
+
+  it('classifies each table by its own name, even at the page edge next to a neighbour', () => {
+    const found = findLensTables(photo.passes[photo.passes.length - 1], 2400);
+    expect(found.map((r) => `${r.eye} ${r.platform}`).sort()).toEqual(['Left CNA0T', 'Left ZCU', 'Right CNA0T', 'Right ZCU']);
+  });
+
+  it('suggests the power for each eye and family', () => {
+    expect(suggestLenses(photo.tables)).toEqual({
+      Right: { ZCU: { power: 15, uncertain: false, label: 'ZCB00' }, CNA0T: { power: 15, uncertain: false, label: 'Clareon CNA 0Tx' } },
+      Left: { ZCU: { power: 18, uncertain: false, label: 'ZCB00' }, CNA0T: { power: 17.5, uncertain: false, label: 'Clareon CNA 0Tx' } },
     });
   });
 });

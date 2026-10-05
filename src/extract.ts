@@ -55,7 +55,46 @@ function pickName(names: { surname: string; firstName: string }[]) {
 
 function parseOne(pass: OcrPass) {
   const lines = pass.lines.map(lineText).filter(Boolean);
-  return { name: findName(lines), mrn: findMrn(lines), dob: findDob(lines), astK: findAstK(pass.lines) };
+  const name = findName(lines);
+  // The labels (small grey text) often OCR as noise while the values read fine, so
+  // with the name located, look for a birth date and ID in the lines just below it.
+  const below = name ? linesBelowName(lines, name.surname) : [];
+  return {
+    name,
+    mrn: findMrn(lines) || findBareMrn(below),
+    dob: findDob(lines) || findBareDob(below),
+    astK: findAstK(pass.lines),
+  };
+}
+
+/** The name line and the next few: Patient, Date of birth, Gender, Patient ID. */
+function linesBelowName(lines: string[], surname: string): string[] {
+  const i = lines.findIndex((l) => l.toUpperCase().includes(surname.toUpperCase()));
+  return i < 0 ? [] : lines.slice(i, i + 6).filter((l) => !/physic|measurement|calibration/i.test(l));
+}
+
+/** A standalone 6-10 digit number (not part of a date), e.g. an MRN whose label was lost. */
+function findBareMrn(lines: string[]): string {
+  for (const line of lines) {
+    for (const token of line.split(/\s+/)) if (/^\d{6,10}$/.test(token)) return token;
+  }
+  return '';
+}
+
+/** A plausible birth date with no usable label; also repairs "/" misread as "1" ("1410511949"). */
+function findBareDob(lines: string[]): string {
+  const thisYear = new Date().getFullYear();
+  for (const line of lines) {
+    for (const token of line.split(/\s+/)) {
+      const d = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(token) ?? /^(\d{2})1(\d{2})1((?:19|20)\d{2})$/.exec(token);
+      if (!d) continue;
+      const [day, month, year] = [Number(d[1]), Number(d[2]), Number(d[3])];
+      // Born at least 18 years ago, so the measurement / calibration dates are never taken.
+      if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > thisYear - 18) continue;
+      return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+    }
+  }
+  return '';
 }
 
 /** Joins a line's words, marking gaps wider than ~1.5 character heights. */
@@ -208,12 +247,13 @@ function findAstK(lines: OcrLine[]): Partial<Record<Eye, AstK>> {
 }
 
 function parseAstK(seg: string): AstK | undefined {
-  // "+0.75 D", "+075D", or with the D misread as 0: "+0750", "(+0900".
-  const p = /^\W*([+-]?)(\d)[.,]?(\d{2})(?:\s*D|0)?(?=\s|$)/.exec(seg);
+  // "+0.75 D", "+075D", the D misread as 0 ("+0750"), or wrapped in pen marks ("(7+0.90D/").
+  const p =
+    /[+-]\s*(\d)[.,]?(\d{2})(?:\s*D|0)?(?=[\s/)|]|$)/.exec(seg) ?? /^\W*(\d)[.,]?(\d{2})(?:\s*D|0)?(?=\s|$)/.exec(seg);
   if (!p) return undefined;
   const a = /(?:@|°)\s*(\d{1,3})|(\d{1,3})\s*°/.exec(seg.slice(p.index + p[0].length));
   const axis = a ? Number(a[1] ?? a[2]) : NaN;
-  return { power: `${Number(p[2])}.${p[3]}`, axis: axis >= 0 && axis <= 180 ? String(axis) : '' };
+  return { power: `${Number(p[1])}.${p[2]}`, axis: axis >= 0 && axis <= 180 ? String(axis) : '' };
 }
 
 /** Left edges of the OD and OS biometry columns, from their row labels. */

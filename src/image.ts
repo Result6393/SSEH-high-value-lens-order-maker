@@ -1,5 +1,8 @@
 const ATTACHMENT_MAX_EDGE = 2400;
 const OCR_MAX_EDGE = 3200;
+// Small photos (screenshots, crops) are enlarged so printed text is big enough to read.
+const OCR_MIN_EDGE = 2400;
+const OCR_MAX_UPSCALE = 3;
 
 /**
  * Decodes the camera photo (applying EXIF rotation) into a JPEG attachment and
@@ -8,8 +11,9 @@ const OCR_MAX_EDGE = 3200;
  */
 export async function prepareImage(file: File): Promise<{ ocr: HTMLCanvasElement; jpeg: Blob }> {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  const attachment = drawScaled(bitmap, ATTACHMENT_MAX_EDGE);
-  const ocr = drawScaled(bitmap, OCR_MAX_EDGE);
+  const attachment = drawScaled(bitmap, Math.min(ATTACHMENT_MAX_EDGE, Math.max(bitmap.width, bitmap.height)));
+  const longEdge = Math.max(bitmap.width, bitmap.height);
+  const ocr = drawScaled(bitmap, longEdge < OCR_MIN_EDGE ? Math.min(OCR_MIN_EDGE, longEdge * OCR_MAX_UPSCALE) : OCR_MAX_EDGE);
   bitmap.close();
   grayscaleContrast(ocr);
   return { ocr, jpeg: await toJpeg(attachment) };
@@ -18,7 +22,7 @@ export async function prepareImage(file: File): Promise<{ ocr: HTMLCanvasElement
 /** An extra image for the email: rotated, downscaled and stripped of EXIF/GPS like the biometry photo. */
 export async function prepareAttachment(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  const canvas = drawScaled(bitmap, ATTACHMENT_MAX_EDGE);
+  const canvas = drawScaled(bitmap, Math.min(ATTACHMENT_MAX_EDGE, Math.max(bitmap.width, bitmap.height)));
   bitmap.close();
   return toJpeg(canvas);
 }
@@ -43,8 +47,9 @@ export function crop(src: HTMLCanvasElement, x: number, y: number, w: number, h:
   return c;
 }
 
-function drawScaled(bitmap: ImageBitmap, maxEdge: number): HTMLCanvasElement {
-  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+/** Scales so the long edge is `edge`; shrinks only, except when called with an edge above the image size. */
+function drawScaled(bitmap: ImageBitmap, edge: number): HTMLCanvasElement {
+  const scale = edge / Math.max(bitmap.width, bitmap.height);
   const c = document.createElement('canvas');
   c.width = Math.round(bitmap.width * scale);
   c.height = Math.round(bitmap.height * scale);

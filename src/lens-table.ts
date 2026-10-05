@@ -65,11 +65,17 @@ export function findLensTables(pass: OcrPass, imageWidth: number): TableRegion[]
 
   const regions: TableRegion[] = [];
   for (const row of rows) {
+    // A table's name sits just left of its "Barrett" label, so stop short of the next table's.
+    const xs = row.map((r) => r.word.x0).sort((p, q) => p - q);
+    const headerLimit = (x: number) => {
+      const next = xs.find((v) => v > x + 1.5 * B);
+      return Math.min(x + 3.2 * B, next === undefined ? Infinity : next - 0.35 * B);
+    };
     const classified = row.map(({ word: a, toric }) => {
       const header = words
         .filter((w) => w !== a && !isFormulaName(w.text) && !isBarrett(w.text))
         .filter((w) => w.y0 >= a.y0 - 1.6 * B && w.y0 <= a.y0 + 0.3 * B)
-        .filter((w) => w.x0 >= a.x0 - 0.3 * B && w.x0 < a.x0 + 3.2 * B)
+        .filter((w) => w.x0 >= a.x0 - 0.3 * B && w.x0 < headerLimit(a.x0))
         .map((w) => w.text)
         .join(' ');
       return { a, toric, ...classify(header) };
@@ -114,7 +120,7 @@ function classify(header: string): { platform?: TablePlatform; label?: string; o
   if (/\b[Z2][CE][TU]\b/i.test(header)) return { platform: 'ZCU', label: 'ZCT' }; // OCR: "zet"
   // AcrySof tables (e.g. SN6AT) are deliberately not used for Clareon: different lens constants.
   if (/SN\w?A[TW]|SN6|Acry|ASPH|PMMA|MTA|Lux|ZA9|TORBI|MA[56]0/i.test(header)) return { other: true };
-  if (/CNA|\bNA\b|[0O]Tx|Cl\w*on/i.test(header)) return { platform: 'CNA0T', label: 'Clareon CNA 0Tx' };
+  if (/CNA|\bNA\b|[0O]7?[Tt]?x|Cl\w*on/i.test(header)) return { platform: 'CNA0T', label: 'Clareon CNA 0Tx' };
   return {};
 }
 
@@ -122,11 +128,12 @@ function classify(header: string): { platform?: TablePlatform; label?: string; o
 function eyeSplit(lines: OcrLine[], imageWidth: number): number {
   const cols = columnEdges(lines);
   if (cols) return cols.os - 0.06 * (cols.os - cols.od);
-  // Barrett Toric pages have no biometry columns; use the "OD right ... left OS" heading.
+  // Barrett Toric pages have no biometry columns. Use the "OD right ... left OS" heading
+  // (the "right" and "left" words read more reliably than "OD"/"OS", which often lose a letter).
   const words = lines.flatMap((l) => l.words);
-  const os = words.find((w) => w.text === 'OS');
-  const od = os && words.find((w) => /^.?OD$/.test(w.text) && Math.abs(w.y0 - os.y0) < 3 * (os.y1 - os.y0));
-  return od && os ? (od.x0 + os.x0) / 2 : imageWidth / 2;
+  const left = words.find((w) => /^left$/i.test(w.text));
+  const right = left && words.find((w) => /^right$/i.test(w.text) && Math.abs(w.y0 - left.y0) < 4 * (left.y1 - left.y0));
+  return left && right ? (right.x0 + left.x0) / 2 : imageWidth / 2;
 }
 
 // ---- Reading the tables ----------------------------------------------------

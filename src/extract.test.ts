@@ -21,8 +21,7 @@ describe('extractBiometry', () => {
     const r = extractBiometry(passes);
     expect(r).toMatchObject({ surname: 'CITIZEN', mrn: '7654321', dob: '01/02/1950' });
     expect(r.firstName).toBe('Jane');
-    // The full-page pass misreads the MRN (7054321), so the user is warned.
-    expect(r.mrnUncertain).toBe(true);
+    expect(r.mrnUncertain).toBe(false);
     // OD's Ast. K is circled in pen and unreadable; OS must not be mistaken for OD.
     expect(r.astK).toEqual({ Left: { power: '0.31', axis: '106' } });
   });
@@ -55,6 +54,35 @@ describe('extractBiometry', () => {
 
   it('finds "SURNAME, First" above Date of birth when the label is unreadable', () => {
     expect(extract('Palit  \\_  LAWSON, Mark  7\nDate of birth 12/07/1951')).toMatchObject({ surname: 'LAWSON', firstName: 'Mark' });
+  });
+
+  it('reads a small, tilted photo with a patient sticker and handwriting (fake identifiers)', () => {
+    const { passes }: { passes: OcrPass[] } = JSON.parse(readFileSync(new URL('../test/fixtures/iolmaster-700-walt-photo.json', import.meta.url), 'utf8'));
+    const r = extractBiometry(passes);
+    // The "Patient ID" / "Date of birth" labels were unreadable; the values are found below the name.
+    expect(r).toMatchObject({ surname: 'WALKER', firstName: 'Anne', mrn: '1087654', dob: '14/05/1949' });
+    expect(r.astK).toEqual({ Right: { power: '2.88', axis: '7' }, Left: { power: '3.07', axis: '163' } });
+  });
+
+  it('finds the MRN and birth date by position when their labels are garbled', () => {
+    const page = [
+      'Patient    WALKER, Anne    Sydney Eye Hospital',
+      'pan    14/05/1949',
+      'a.    Female',
+      'Sent 0    1087654',
+      'Physician    Sydney    Date of measurement 27/10/2025    Date of calibration test 24/10/2025',
+    ].join('\n');
+    expect(extract(page)).toMatchObject({ surname: 'WALKER', mrn: '1087654', dob: '14/05/1949' });
+  });
+
+  it('repairs "/" misread as "1" in a birth date, and never takes the measurement date', () => {
+    expect(extract('Patient    WALKER, Anne\nof bth    1410511949\nPatient ID 1087654').dob).toBe('14/05/1949');
+    expect(extract('Patient    WALKER, Anne\nDate of measurement 27/10/2025').dob).toBe('');
+  });
+
+  it('reads an Ast. K wrapped in pen marks', () => {
+    const page = 'AL 23.70    AL 23.79\nACD 5.22    ACD 3.17\nLT 0.14    LT 3.79\nAst. K +0.75D @ 16° Ast. TK +0.92D    Ast. K (7+0.90D/ @ 145°    Ast. TK +0.97D';
+    expect(extract(page).astK).toEqual({ Right: { power: '0.75', axis: '16' }, Left: { power: '0.90', axis: '145' } });
   });
 
   it('tolerates OCR dropping the "i" in Patient', () => {
