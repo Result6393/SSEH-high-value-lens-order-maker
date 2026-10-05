@@ -72,8 +72,23 @@
     </nav>
 
     <div id="tab-toric" class="tab" role="tabpanel">
+    <section id="step-sticker">
+      <h2>1. Patient sticker</h2>
+      <p class="hint" style="margin-top:0">Photograph the patient sticker for the name and MRN. The biometry photo below fills in anything the sticker missed.</p>
+      <div class="row">
+        <label class="button primary">Take photo
+          <input id="st-camera" type="file" accept="image/*" capture="environment" hidden />
+        </label>
+        <label class="button">Choose photo
+          <input id="st-library" type="file" accept="image/*" hidden />
+        </label>
+      </div>
+      <img id="st-preview" alt="Patient sticker photo" hidden />
+      <p id="st-status" class="hint" hidden></p>
+    </section>
+
     <section id="step-photo">
-      <h2>1. Biometry photo</h2>
+      <h2>2. Biometry photo</h2>
       <div class="row">
         <label class="button primary">Take photo
           <input id="camera" type="file" accept="image/*" capture="environment" hidden />
@@ -100,14 +115,14 @@
     </section>
 
     <section id="step-details">
-      <h2>2. Operative eye</h2>
+      <h2>3. Operative eye</h2>
       <fieldset class="eye">
         <label><input type="radio" name="eye" value="Right" /> Right (OD)</label>
         <label><input type="radio" name="eye" value="Left" /> Left (OS)</label>
       </fieldset>
-      <h2>3. Check details</h2>
+      <h2>4. Check details</h2>
       <label>MRN <input id="mrn" type="text" autocomplete="off" /></label>
-      <p id="mrn-warning" class="warning" hidden>The MRN read differently on two passes. Check every digit against the printout.</p>
+      <p id="mrn-warning" class="warning" hidden></p>
       <label>Name <input id="name" type="text" autocomplete="off" /></label>
       <div class="row">
         <label>Ast. K (D) <input id="astk" type="text" inputmode="decimal" autocomplete="off" /></label>
@@ -120,7 +135,7 @@
     </section>
 
     <section id="step-lens">
-      <h2>4. Lens</h2>
+      <h2>5. Lens</h2>
       <fieldset class="seg">
         <label><input type="radio" name="platform" value="ZCU" /> Tecnis ZCU</label>
         <label><input type="radio" name="platform" value="CNA0T" /> Clareon</label>
@@ -139,7 +154,7 @@
     </section>
 
     <section id="step-send">
-      <h2>5. Send</h2>
+      <h2>6. Send</h2>
       <ul id="problems" class="problems"></ul>
       <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. Your recipients are copied (separated by semicolons), so paste them into To.</p>
       <button id="send" class="primary" type="button" disabled>Prepare email</button>

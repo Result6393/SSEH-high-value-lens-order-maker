@@ -1,13 +1,12 @@
 // The Tutoplast tab: patient sticker photo -> name/MRN -> order form + email.
 // Like the toric tab, patient data lives only in these variables and the form fields.
 
-import { attachmentStem, joinName, tutoplastBody, tutoplastSubject } from './email';
-import { prepareImage } from './image';
-import { readSticker } from './ocr';
+import { attachmentStem, tutoplastBody, tutoplastSubject } from './email';
 import { fillTutoplastForm } from './pdf';
 import { parseRecipients } from './recipients';
 import { saveSettings } from './settings';
 import { shareEmail, type EmailDraft } from './share';
+import { initStickerStep, stickerName } from './sticker-ui';
 import { DEFAULT_COMPANY, DEFAULT_IMPLANT, OTHER_DIAGNOSIS, TUTOPLAST_DIAGNOSES, diagnosisText, validateTutoplast } from './tutoplast';
 import type { Eye, Settings, TutoplastRequest } from './types';
 
@@ -35,8 +34,6 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     sendStatus: $('tp-send-status'),
   };
 
-  let photoUrl: string | undefined;
-  let token = 0;
   let prepared: { key: string; draft: EmailDraft } | undefined;
 
   el.diagnosis.replaceChildren(
@@ -80,47 +77,11 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
   // Settings (recipients, name) can change while this tab is open.
   $('settings-done').addEventListener('click', refresh);
 
-  const setStatus = (msg: string) => {
-    el.ocrStatus.textContent = msg;
-    el.ocrStatus.hidden = !msg;
-  };
-
-  for (const picker of [el.camera, el.library]) {
-    picker.addEventListener('change', () => {
-      const file = picker.files?.[0];
-      picker.value = '';
-      if (file) void onPhoto(file);
-    });
-  }
-
-  async function onPhoto(file: File): Promise<void> {
-    const mine = ++token;
-    setStatus('Loading photo…');
-    try {
-      const { ocr, jpeg } = await prepareImage(file);
-      if (mine !== token) return;
-      if (photoUrl) URL.revokeObjectURL(photoUrl);
-      photoUrl = URL.createObjectURL(jpeg); // shown for checking only; the sticker photo is not sent
-      el.preview.src = photoUrl;
-      el.preview.hidden = false;
-      const sticker = await readSticker(ocr, (stage) => mine === token && setStatus(stage));
-      if (mine !== token) return;
-      el.mrn.value = sticker.mrn;
-      el.name.value = joinName(sticker.surname, sticker.firstName);
-      const missing = [!sticker.mrn && 'MRN', !sticker.surname && 'name'].filter(Boolean);
-      setStatus(
-        (missing.length ? `Couldn't read the ${missing.join(' or the ')}. Fill it in by hand. ` : '') +
-          {
-            barcode: 'MRN from the barcode. Check the name against the sticker.',
-            text: "The barcode couldn't be read, so the MRN comes from the printed digits. Check every digit.",
-            '': '',
-          }[sticker.mrnSource],
-      );
-    } catch (e) {
-      setStatus(`Problem reading the photo: ${(e as Error).message}`);
-    }
+  const sticker = initStickerStep({ camera: el.camera, library: el.library, preview: el.preview, status: el.ocrStatus }, (read) => {
+    el.mrn.value = read.mrn;
+    el.name.value = stickerName(read);
     refresh();
-  }
+  });
 
   el.send.addEventListener('click', async () => {
     const req = currentRequest();
@@ -157,19 +118,14 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
   }
 
   $('tp-reset').addEventListener('click', () => {
-    token++;
     prepared = undefined;
-    if (photoUrl) URL.revokeObjectURL(photoUrl);
-    photoUrl = undefined;
-    el.preview.removeAttribute('src');
-    el.preview.hidden = true;
+    sticker.reset();
     for (const i of [el.mrn, el.name, el.surgeryDate]) i.value = '';
     el.diagnosis.value = '';
     el.other.value = ''; // free text may name the patient, so it is never saved
     el.implant.value = DEFAULT_IMPLANT;
     el.company.value = DEFAULT_COMPANY;
     document.querySelectorAll<HTMLInputElement>('input[name="tp-eye"]').forEach((r) => (r.checked = false));
-    setStatus('');
     el.sendStatus.textContent = '';
     refresh();
     window.scrollTo({ top: 0 });

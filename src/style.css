@@ -66,4 +66,4 @@ code { background: var(--bg); padding: 1px 5px; border-radius: 4px; }
 .tabs { display: flex; gap: 8px; }
 .tabs button { flex: 1; margin: 0; padding: 12px 4px; }
 .tabs button[aria-selected='true'] { background: var(--accent); border-color: var(--accent); color: #fff; }
-#tp-preview { width: 100%; margin-top: 12px; border-radius: 8px; border: 1px solid var(--border); }
+#tp-preview, #st-preview { width: 100%; margin-top: 12px; border-radius: 8px; border: 1px solid var(--border); }

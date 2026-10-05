@@ -9,6 +9,7 @@ import { readPrintout } from './ocr';
 import { DEFAULT_DIAGNOSIS, TEMPLATE_URL, fillOrderForm } from './pdf';
 import { loadSettings, saveSettings } from './settings';
 import { parseRecipients } from './recipients';
+import { initStickerStep, stickerName } from './sticker-ui';
 import { initTutoplast } from './tutoplast-ui';
 import { shareEmail, type EmailDraft } from './share';
 import type { Eye, RequestData } from './types';
@@ -59,6 +60,9 @@ let photo: Blob | undefined;
 let extras: { blob: Blob; url: string }[] = [];
 let previewUrl: string | undefined;
 let extracted: Extracted | undefined;
+/** Warnings shown under the MRN field: about the sticker read, and about the biometry's MRN. */
+let mrnWarnings: { sticker?: string; biometry?: string } = {};
+let stickerMrn = '';
 let lensSuggestions: LensSuggestions | undefined;
 const lensMemory = new LensMemory();
 let photoToken = 0;
@@ -186,19 +190,26 @@ async function onPhoto(file: File): Promise<void> {
       document.querySelector<HTMLInputElement>(`input[name="eye"][value="${guess.eye}"]`)!.checked = true;
       eyeNote = ` ${guess.eye.toUpperCase()} eye selected: ${guess.reason}. Change it if that's wrong.`;
     }
-    el.mrn.value = extracted.mrn;
-    el.name.value = joinName(extracted.surname, extracted.firstName);
-    el.mrnWarning.hidden = !extracted.mrnUncertain;
+    // The patient sticker is the main source of name and MRN; the biometry only fills what is still empty.
+    const filled: string[] = [];
+    if (!el.mrn.value && extracted.mrn) {
+      el.mrn.value = extracted.mrn;
+      filled.push('MRN');
+      if (extracted.mrnUncertain) mrnWarnings.biometry = 'The MRN read differently on two passes. Check every digit against the printout.';
+    }
+    if (!el.name.value && extracted.surname) {
+      el.name.value = joinName(extracted.surname, extracted.firstName);
+      filled.push('name');
+    }
+    // A different MRN on the printout than on the sticker may mean the wrong patient (or a misread digit).
+    if (stickerMrn && extracted.mrn && extracted.mrn !== stickerMrn) mrnWarnings.biometry = mrnMismatch(extracted.mrn);
+    showMrnWarning();
     fillAstK();
     showLens();
-    const missing = [
-      !extracted.mrn && 'MRN',
-      !extracted.surname && 'name',
-    ].filter(Boolean);
+    const missing = [!el.mrn.value && 'MRN', !el.name.value && 'name'].filter(Boolean);
     setOcrStatus(
-      missing.length
-        ? `Couldn't read the ${missing.join(', ')}. Fill it in by hand.`
-        : 'Details read. Check them against the printout.',
+      (filled.length ? `${filled.join(' and ')} filled in from the biometry. ` : '') +
+        (missing.length ? `Still missing: ${missing.join(' and ')}. Fill it in by hand.` : 'Details read. Check them against the printout.'),
     );
     if (eyeNote) el.ocrStatus.textContent += eyeNote;
   } catch (e) {
@@ -206,6 +217,33 @@ async function onPhoto(file: File): Promise<void> {
   }
   refresh();
 }
+
+const mrnMismatch = (biometryMrn: string) => `The MRN on the biometry (${biometryMrn}) differs from the sticker's. Check it is the same patient.`;
+
+function showMrnWarning(): void {
+  const text = mrnWarnings.biometry ?? mrnWarnings.sticker ?? '';
+  el.mrnWarning.textContent = text;
+  el.mrnWarning.hidden = !text;
+}
+
+const sticker = initStickerStep(
+  { camera: input('st-camera'), library: input('st-library'), preview: $<HTMLImageElement>('st-preview'), status: $('st-status') },
+  (read) => {
+    // The sticker is the preferred source, so a new one replaces both fields, even with blanks:
+    // keeping the previous patient's name after a failed read would be worse than an empty field.
+    // (Retaking the biometry afterwards fills any gap.)
+    el.mrn.value = read.mrn;
+    el.name.value = stickerName(read);
+    stickerMrn = read.mrn;
+    mrnWarnings = {
+      sticker: read.mrnSource === 'text' ? "The barcode couldn't be read, so the MRN is from the printed digits. Check every digit." : undefined,
+      // If the biometry was read first, compare its MRN with the sticker's.
+      biometry: read.mrn && extracted?.mrn && extracted.mrn !== read.mrn ? mrnMismatch(extracted.mrn) : undefined,
+    };
+    showMrnWarning();
+    refresh();
+  },
+);
 
 /** Shows the astigmatism read for the selected eye (the printout has both). */
 function fillAstK(): void {
@@ -356,7 +394,10 @@ el.lensPower.addEventListener('change', () => {
   rememberLens();
 });
 selectPlatform(settings.lensPlatform);
-el.mrn.addEventListener('input', () => (el.mrnWarning.hidden = true));
+el.mrn.addEventListener('input', () => {
+  mrnWarnings = {};
+  showMrnWarning();
+});
 $('tab-toric').addEventListener('input', refresh);
 
 // Fetch the form template up front so the share call stays within the tap's user activation.
@@ -441,7 +482,10 @@ $('reset').addEventListener('click', () => {
   el.extrasStatus.hidden = true;
   for (const i of patientInputs) i.value = '';
   el.diagnosis.value = DEFAULT_DIAGNOSIS; // free text may name the patient, so it is never saved
-  el.mrnWarning.hidden = true;
+  mrnWarnings = {};
+  stickerMrn = '';
+  showMrnWarning();
+  sticker.reset();
   lensMemory.clear();
   document.querySelectorAll<HTMLInputElement>('input[name="eye"]').forEach((r) => (r.checked = false));
   selectPlatform(settings.lensPlatform);

@@ -3,10 +3,10 @@
 Phone web app (installable PWA) that turns a photo of a biometry printout into a
 toric IOL approval email for the lens coordinators:
 
-1. Photograph the IOLMaster biometry printout (the both-eyes Barrett Universal II
+1. Photograph the patient sticker first: the MRN is read from its barcode and the name from the printed text. Then photograph the IOLMaster biometry printout (the both-eyes Barrett Universal II
    page, or a one-eye Barrett Toric page).
-2. Check the operative eye (preselected when only one eye has tables or Ast. K ≥ 2 D, otherwise pick it). MRN, name and that eye's Ast. K are
-   read from the photo (check them against the printout).
+2. Check the operative eye (preselected when only one eye has tables or Ast. K ≥ 2 D, otherwise pick it). That eye's Ast. K is read from the biometry, which also fills in the name or MRN if the sticker
+   missed them (check everything against the printout).
 3. Pick the lens: Tecnis ZCU (default) or Clareon. The power is read from that
    lens's table for the chosen eye; on a Barrett Toric page the recommended toric
    model (e.g. ZCU300, CNA0T5) is filled in too, otherwise pick it.

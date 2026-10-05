@@ -23,6 +23,8 @@ A static, client-only phone PWA (Vite + vanilla TypeScript, no framework, no bac
 
 ## Flow / architecture
 
+Both tabs start with a **patient sticker** photo (`src/sticker-ui.ts`, shared by `main.ts` and `tutoplast-ui.ts`: MRN from the barcode, name from OCR, see the Tutoplast bullet below). On the toric tab the biometry photo comes second and only fills the name/MRN that are still empty (a second chance when the sticker missed something); a new sticker replaces both fields even with blanks, so a failed read never leaves the previous patient's name; an MRN on the biometry that differs from the sticker's shows a warning (possible wrong patient). OCR reads share one Tesseract worker and are serialised in `ocr.ts` (`serial`) so a sticker photo taken during a biometry read can't clobber its digits-only whitelist.
+
 `main.ts` wires up the DOM in `index.html`: photo input → `prepareImage` (grayscale + contrast canvas for OCR, EXIF-free JPEG for the email) → `readPrintout` → `extractBiometry` fills the fields (the user always reviews them) → `validate` gates the send button (`eligibilityWarning` for Ast. K < 2 D only warns) → `fillOrderForm` + `shareEmail`.
 
 - `src/ocr.ts`: Tesseract passes on one shared worker: the full page, a tight crop of the patient header (located from the first pass's line boxes), then each lens power table upscaled 2x with a digits-only whitelist. Returns word boxes (`src/ocr-types.ts`, header pass first) plus table texts. Keep `tessedit_pageseg_mode` at SINGLE_BLOCK (tesseract.js's default): AUTO splits the header labels from their values.

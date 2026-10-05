@@ -18,6 +18,15 @@ export interface PrintoutRead {
 }
 
 let worker: Promise<Worker> | undefined;
+
+// One shared worker with per-call parameters (digits-only whitelist, progress callback), so reads
+// must not overlap: e.g. a sticker photo taken while the biometry is still being read.
+let queue: Promise<unknown> = Promise.resolve();
+function serial<T>(job: () => Promise<T>): Promise<T> {
+  const run = queue.then(job, job);
+  queue = run.catch(() => {});
+  return run;
+}
 let progress: (p: number) => void = () => {};
 
 // All OCR assets are served from our own origin (copied into public/ocr by
@@ -40,7 +49,11 @@ function getWorker(): Promise<Worker> {
  * "Physician"), which reads small identifiers more reliably; then each lens
  * power table, upscaled and read as digits only.
  */
-export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<PrintoutRead> {
+export function readPrintout(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<PrintoutRead> {
+  return serial(() => readPrintoutNow(image, onProgress));
+}
+
+async function readPrintoutNow(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<PrintoutRead> {
   const w = await getWorker();
   // SINGLE_BLOCK is tesseract.js's default; AUTO splits labels from their values.
   await w.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: '' });
@@ -84,7 +97,11 @@ export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage:
  * cleaner read. If that doesn't find the name, the photo is tried turned a
  * quarter either way (stickers are often photographed sideways), keeping the best read.
  */
-export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<StickerRead> {
+export function readSticker(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<StickerRead> {
+  return serial(() => readStickerNow(image, onProgress));
+}
+
+async function readStickerNow(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<StickerRead> {
   const w = await getWorker();
   await w.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: '' });
   let best: Sticker = { mrn: '', surname: '', firstName: '' };
