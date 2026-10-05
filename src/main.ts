@@ -173,7 +173,7 @@ function fillLensPower(): void {
     : `No ${platform === 'ZCU' ? 'Tecnis' : 'Clareon'} table could be read for this eye. Enter the model and power.`;
   if (pick?.uncertain) {
     el.lensWarning.hidden = false;
-    el.lensWarning.textContent = 'The table read inconsistently. Check the power against the printout.';
+    el.lensWarning.textContent = 'Part of the table was unclear. Check the power against the printout.';
   }
   refresh();
 }

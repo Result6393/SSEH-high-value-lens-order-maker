@@ -39,6 +39,15 @@ describe('extractBiometry', () => {
     expect(r.astK).toEqual({ Right: { power: '0.75', axis: '16' }, Left: { power: '0.90', axis: '145' } });
   });
 
+  it('reads a real both-eye page with toric tables (fake identifiers)', () => {
+    const { passes }: { passes: OcrPass[] } = JSON.parse(readFileSync(new URL('../test/fixtures/iolmaster-700-both-toric-photo.json', import.meta.url), 'utf8'));
+    const r = extractBiometry(passes);
+    // The fake name was drawn small on a low-res photo; OCR gets it only roughly.
+    expect(r).toMatchObject({ mrn: '9114567', dob: '22/09/1955' });
+    expect(r.surname).toMatch(/^DAV/);
+    expect(r.astK).toEqual({ Right: { power: '2.12', axis: '175' }, Left: { power: '0.83', axis: '12' } });
+  });
+
   it('reads Ast. K with the D misread as 0 and stops before Ast. TK', () => {
     const page = 'AL 23.70    AL 23.79\nACD 5.22    ACD 3.17\nLT 0.14    LT 3.79\nAstK +0750 @ 16° ASLTK +092D    AstK (+0900 @145° Ast. TK +0.97D';
     expect(extract(page).astK).toEqual({ Right: { power: '0.75', axis: '16' }, Left: { power: '0.90', axis: '145' } });

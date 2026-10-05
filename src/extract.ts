@@ -183,7 +183,7 @@ function findAstK(lines: OcrLine[]): Partial<Record<Eye, AstK>> {
     const words = line.words;
     words.forEach((w, i) => {
       let next = i + 1;
-      if (/^Ast\.?K$/i.test(w.text)) next = i + 1;
+      if (/^A[sl]?[tl]?\.?K$/i.test(w.text)) next = i + 1; // "AstK", OCR'd "ALK"
       else if (/^Ast\.?$/i.test(w.text) && words[i + 1]?.text === 'K') next = i + 2;
       else return;
       // The value and axis follow; stop at the next label (e.g. "Ast. TK", OCR'd "ASLTK").

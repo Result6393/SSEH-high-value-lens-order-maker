@@ -23,6 +23,11 @@ describe('pickPower', () => {
     expect(pickPower('42250062\n422.00 0.26\n+21.50+0.09\n42100+044\n-- 000')).toEqual({ power: 21.5, uncertain: false });
   });
 
+  it('extends the trend when the rows around zero were lost, flagged to check', () => {
+    // Real OCR: "+17.50" read as "-1750", "+16.50" lost its "1".
+    expect(pickPower('+18.00 -0.82\n-1750-048\n\n+17.00 -0.16\n\n6.50 +0.17\n-- 0.00')).toEqual({ power: 17, uncertain: true });
+  });
+
   it('ignores residuals whose sign cannot be worked out, and junk', () => {
     expect(pickPower('+2300 085\n+2250 048')).toBeUndefined();
     expect(pickPower('LF +2.02 DF')).toBeUndefined();
@@ -87,6 +92,22 @@ describe('one-eye Barrett Universal II page, tables in a different order (real p
         ZCU: { power: 20.5, uncertain: false, label: 'ZCB00' },
         CNA0T: { power: 20, uncertain: false, label: 'Clareon CNA 0Tx' },
       },
+    });
+  });
+});
+
+describe('both-eye page with monofocal and Barrett Toric TK tables (real photo)', () => {
+  const photo = load('iolmaster-700-both-toric-photo.json');
+
+  it('prefers the toric ZCT table over ZCB00, ignores other lenses, finds no Clareon', () => {
+    const found = findLensTables(photo.passes[photo.passes.length - 1], 976);
+    expect(found.map((r) => `${r.eye} ${r.platform} ${r.label}`).sort()).toEqual(['Left ZCU ZCT', 'Right ZCU ZCT']);
+  });
+
+  it('suggests power and the middle toric model for each eye', () => {
+    expect(suggestLenses(photo.tables)).toEqual({
+      Right: { ZCU: { power: 17, uncertain: true, label: 'ZCT', cyl: 3 } },
+      Left: { ZCU: { power: 16, uncertain: false, label: 'ZCT', cyl: 1.5 } },
     });
   });
 });

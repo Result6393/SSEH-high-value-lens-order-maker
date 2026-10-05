@@ -30,9 +30,9 @@ export interface TableRegion {
   toric?: Box;
 }
 
-// OCR variants seen: "Barn", "[Barren", "[garrett", "Unwersai", "Tore".
+// OCR variants seen: "Barn", "[Barren", "[garrett", "Bartell", "Unwersai", "Tore", "Tone".
 const isBarrett = (t: string) => /^\W*Barr?ett\W*$/i.test(t);
-const isFormulaName = (t: string) => /^\W*(Tor|Un[iw])/i.test(t);
+const isFormulaName = (t: string) => /^\W*(To[rn]|Un[iw])/i.test(t);
 
 /** "Barrett" (or an OCR variant) followed by "Toric"/"Universal". */
 function formulaAnchors(line: OcrLine): { word: OcrWord; toric: boolean }[] {
@@ -40,7 +40,7 @@ function formulaAnchors(line: OcrLine): { word: OcrWord; toric: boolean }[] {
   line.words.forEach((w, i) => {
     const next = line.words[i + 1]?.text ?? '';
     if (isBarrett(w.text) || (/^\W*[BbGg]arr?\w{0,4}\W*$/.test(w.text) && isFormulaName(next))) {
-      out.push({ word: w, toric: /^\W*Tor/i.test(next) });
+      out.push({ word: w, toric: /^\W*To[rn]/i.test(next) });
     }
   });
   return out;
@@ -74,8 +74,14 @@ export function findLensTables(pass: OcrPass, imageWidth: number): TableRegion[]
         .join(' ');
       return { a, toric, ...classify(header) };
     });
-    if (classified.length === 6 && !classified.some((c) => c.toric)) {
-      const usual = [['CNA0T', 'Clareon CNA 0Tx'], ['CNA0T', 'Clareon CNA 0Tx'], ['ZCU', 'ZCB00']] as const;
+    // Fill unreadable lens names from the usual order, but only when every
+    // readable name agrees with that order (other configurations exist).
+    const usual = [['CNA0T', 'Clareon CNA 0Tx'], ['CNA0T', 'Clareon CNA 0Tx'], ['ZCU', 'ZCB00']] as const;
+    if (
+      classified.length === 6 &&
+      !classified.some((c) => c.toric) &&
+      classified.every((c, i) => !c.other && (!c.platform || c.platform === usual[i % 3][0]))
+    ) {
       classified.forEach((c, i) => {
         if (!c.platform) [c.platform, c.label] = usual[i % 3];
       });
@@ -84,8 +90,11 @@ export function findLensTables(pass: OcrPass, imageWidth: number): TableRegion[]
     for (const c of classified) {
       if (!c.platform) continue;
       const eye: Eye = c.a.x0 < split ? 'Right' : 'Left';
-      // First table of each kind per eye wins (Clareon appears twice, same values).
-      if (regions.some((r) => r.eye === eye && r.platform === c.platform)) continue;
+      // One table per eye and kind: a toric table beats a monofocal one (it also
+      // gives the cylinder); otherwise the first wins (Clareon appears twice).
+      const existing = regions.findIndex((r) => r.eye === eye && r.platform === c.platform);
+      if (existing >= 0 && (regions[existing].toric || !c.toric)) continue;
+      if (existing >= 0) regions.splice(existing, 1);
       const { x0, y0 } = c.a;
       regions.push({
         eye,
@@ -99,11 +108,12 @@ export function findLensTables(pass: OcrPass, imageWidth: number): TableRegion[]
   return regions;
 }
 
-function classify(header: string): { platform?: TablePlatform; label?: string } {
+/** `other`: a recognisably different lens, never filled in from position. */
+function classify(header: string): { platform?: TablePlatform; label?: string; other?: boolean } {
   if (/B[0O]{2}/i.test(header)) return { platform: 'ZCU', label: 'ZCB00' };
-  if (/[Z2]C[TU]\b/i.test(header)) return { platform: 'ZCU', label: 'ZCT' };
+  if (/\b[Z2][CE][TU]\b/i.test(header)) return { platform: 'ZCU', label: 'ZCT' }; // OCR: "zet"
   // AcrySof tables (e.g. SN6AT) are deliberately not used for Clareon: different lens constants.
-  if (/SN\w?AT|Acry/i.test(header)) return {};
+  if (/SN\w?A[TW]|SN6|Acry|ASPH|PMMA|MTA|Lux|ZA9|TORBI|MA[56]0/i.test(header)) return { other: true };
   if (/CNA|\bNA\b|[0O]Tx|Cl\w*on/i.test(header)) return { platform: 'CNA0T', label: 'Clareon CNA 0Tx' };
   return {};
 }
@@ -130,7 +140,7 @@ interface Row {
 
 export interface PowerPick {
   power: number;
-  /** The two ways of reading the table disagreed. */
+  /** The table was only partly readable, or two ways of reading it disagreed. */
   uncertain: boolean;
 }
 
@@ -149,7 +159,8 @@ export function pickPower(text: string): PowerPick | undefined {
     const line = raw.replace(/(^|\s)4(?=[1-3]\d\.?\d{2})/, '$1+');
     const m = /([+-]?)(\d{2})\.?(\d{2})(?:\s*([+-]?)(\d)\.?(\d{2}))?/.exec(line);
     if (!m) continue;
-    const iol = Number(`${m[2]}.${m[3]}`) * (m[1] === '-' ? -1 : 1);
+    // Sign ignored: no negative IOLs here, and OCR reads "+" as "-" ("-1750").
+    const iol = Number(`${m[2]}.${m[3]}`);
     if (iol < 5 || iol > 35) continue;
     const seAbs = m[5] === undefined ? undefined : Number(`${m[5]}.${m[6]}`);
     const se = seAbs === 0 ? 0 : seAbs !== undefined && m[4] ? (m[4] === '-' ? -seAbs : seAbs) : undefined;
@@ -170,9 +181,22 @@ export function pickPower(text: string): PowerPick | undefined {
     }
   }
 
-  const power = fromExact ?? fromRows;
+  // No crossing read (rows lost): extend the trend of the two rows nearest zero
+  // by at most 0.5 D, and ask the user to check.
+  let extrapolated: number | undefined;
+  if (fromExact === undefined && fromRows === undefined && signed.length >= 2) {
+    const [a, b] = [...signed].sort((p, q) => Math.abs(p.se!) - Math.abs(q.se!));
+    const slope = (b.se! - a.se!) / (b.iol - a.iol); // residual per dioptre, negative
+    const zero = slope < 0 ? a.iol - a.se! / slope : NaN;
+    if (Math.abs(zero - a.iol) <= 0.5) extrapolated = roundToHalf(zero);
+  }
+
+  const power = fromExact ?? fromRows ?? extrapolated;
   if (power === undefined) return undefined;
-  return { power, uncertain: fromExact !== undefined && fromRows !== undefined && fromExact !== fromRows };
+  return {
+    power,
+    uncertain: extrapolated !== undefined || (fromExact !== undefined && fromRows !== undefined && fromExact !== fromRows),
+  };
 }
 
 /**
