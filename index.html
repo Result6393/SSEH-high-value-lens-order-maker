@@ -165,12 +165,7 @@
       </section>
 
       <section>
-        <h2>2. Operative eye</h2>
-        <fieldset class="eye">
-          <label><input type="radio" name="tp-eye" value="Right" /> Right (OD)</label>
-          <label><input type="radio" name="tp-eye" value="Left" /> Left (OS)</label>
-        </fieldset>
-        <h2>3. Check details</h2>
+        <h2>2. Check details</h2>
         <label>MRN <input id="tp-mrn" type="text" autocomplete="off" /></label>
         <label>Name <input id="tp-name" type="text" autocomplete="off" /></label>
         <label>VMO surgeon <input id="tp-vmo" type="text" autocomplete="off" /></label>
@@ -178,7 +173,11 @@
       </section>
 
       <section>
-        <h2>4. Diagnosis</h2>
+        <h2>3. Operative eye and diagnosis</h2>
+        <fieldset class="eye">
+          <label><input type="radio" name="tp-eye" value="Right" /> Right (OD)</label>
+          <label><input type="radio" name="tp-eye" value="Left" /> Left (OS)</label>
+        </fieldset>
         <label>Diagnosis (on the order form)
           <select id="tp-diagnosis"></select>
         </label>
@@ -190,7 +189,7 @@
       </section>
 
       <section>
-        <h2>5. Send</h2>
+        <h2>4. Send</h2>
         <ul id="tp-problems" class="problems"></ul>
         <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. Your recipients are copied (separated by semicolons), so paste them into To.</p>
         <button id="tp-send" class="primary" type="button" disabled>Prepare email</button>
