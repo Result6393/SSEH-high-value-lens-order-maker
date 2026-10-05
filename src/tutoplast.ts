@@ -4,7 +4,7 @@ import type { TutoplastRequest } from './types';
 /** Preset diagnoses for the order form; "Other" takes free text. */
 export const TUTOPLAST_DIAGNOSES = [
   'IOP not controlled on maximal medical therapy. Needs tube filtration surgery with tutoplast cover.',
-  'Hypotony, needs tube flap revision with tutoplast.',
+  'Hypotony. Needs trab flap revision with tutoplast.',
 ] as const;
 export const OTHER_DIAGNOSIS = 'other';
 
