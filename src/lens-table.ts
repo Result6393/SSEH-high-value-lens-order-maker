@@ -47,7 +47,7 @@ function formulaAnchors(line: OcrLine): { word: OcrWord; toric: boolean }[] {
 
 /**
  * Locates the tables for ZCU (Tecnis: "ZCB00" or toric "ZCT") and CNA0T
- * (Alcon: Clareon "CNA 0Tx", or toric "AcrySof SN6AT") for each eye, from the
+ * (Clareon "CNA 0Tx"; never AcrySof) for each eye, from the
  * full-page pass. Lens names OCR badly, so tables are anchored on their
  * "Barrett ..." formula header and classified by the fuzzy name above it; a
  * monofocal row of six unclassified tables falls back to the usual order
@@ -101,7 +101,8 @@ export function findLensTables(pass: OcrPass, imageWidth: number): TableRegion[]
 function classify(header: string): { platform?: TablePlatform; label?: string } {
   if (/B[0O]{2}/i.test(header)) return { platform: 'ZCU', label: 'ZCB00' };
   if (/[Z2]C[TU]\b/i.test(header)) return { platform: 'ZCU', label: 'ZCT' };
-  if (/SN\w?AT/i.test(header)) return { platform: 'CNA0T', label: 'AcrySof SN6AT' };
+  // AcrySof tables (e.g. SN6AT) are deliberately not used for Clareon: different lens constants.
+  if (/SN\w?AT|Acry/i.test(header)) return {};
   if (/CNA|\bNA\b|[0O]Tx|Cl\w*on/i.test(header)) return { platform: 'CNA0T', label: 'Clareon CNA 0Tx' };
   return {};
 }

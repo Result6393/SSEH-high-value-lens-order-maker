@@ -170,7 +170,7 @@ function fillLensPower(): void {
   el.lensHint.hidden = false;
   el.lensHint.textContent = pick
     ? `${model ? `${model} ` : ''}${formatPower(String(pick.power))} from the ${pick.label} table (${eye === 'Right' ? 'OD' : 'OS'}). Check it.`
-    : `Couldn't read the ${platform === 'ZCU' ? 'Tecnis' : 'Alcon'} table for this eye. Enter the power.`;
+    : `No ${platform === 'ZCU' ? 'Tecnis' : 'Clareon'} table could be read for this eye. Enter the model and power.`;
   if (pick?.uncertain) {
     el.lensWarning.hidden = false;
     el.lensWarning.textContent = 'The table read inconsistently. Check the power against the printout.';

@@ -59,22 +59,17 @@ describe('Barrett Universal II page (real photo, both eyes)', () => {
 describe('Barrett Toric page (real photo, OS only)', () => {
   const photo = load('iolmaster-700-toric-photo.json');
 
-  it('finds the ZCT and AcrySof SN6AT tables for the left eye only', () => {
+  it('finds the ZCT table for the left eye only, and ignores AcrySof tables', () => {
     const found = findLensTables(photo.passes[photo.passes.length - 1], 1035);
-    expect(found.map((r) => `${r.eye} ${r.platform} ${r.label}`)).toEqual(['Left ZCU ZCT', 'Left CNA0T AcrySof SN6AT']);
+    expect(found.map((r) => `${r.eye} ${r.platform} ${r.label}`)).toEqual(['Left ZCU ZCT']);
     expect(found.every((r) => r.toric)).toBe(true);
   });
 
-  it('suggests power and the recommended (bold, middle) toric model', () => {
+  it('suggests power and the recommended (bold, middle) toric model, no Clareon', () => {
     const s = suggestLenses(photo.tables);
-    expect(s).toEqual({
-      Left: {
-        ZCU: { power: 21.5, uncertain: false, label: 'ZCT', cyl: 3 },
-        CNA0T: { power: 21.5, uncertain: false, label: 'AcrySof SN6AT', cyl: 3 },
-      },
-    });
+    expect(s).toEqual({ Left: { ZCU: { power: 21.5, uncertain: false, label: 'ZCT', cyl: 3 } } });
     expect(modelForCylinder('ZCU', s.Left!.ZCU!.cyl!)).toBe('ZCU300');
-    expect(modelForCylinder('CNA0T', s.Left!.CNA0T!.cyl!)).toBe('CNA0T5');
+    expect(modelForCylinder('CNA0T', 3)).toBe('CNA0T5');
   });
 });
 
