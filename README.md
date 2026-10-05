@@ -24,6 +24,8 @@ phone (Tesseract, served from this app, works offline), so nothing is uploaded
 anywhere except the email you send yourself. Only your recipient list,
 your name, contact number, last VMO surgeon and email text are saved, in the browser's local storage.
 
+The version number is in the header; Settings also shows the build id (the commit), which tells you whether your phone has the newest copy.
+
 ## Development
 
 ```sh
@@ -31,6 +33,7 @@ npm install        # also copies OCR assets into public/ocr
 npm run dev        # dev server on the LAN (a real phone's camera needs HTTPS: use a tunnel or deploy)
 npm test           # unit tests
 npm run build      # typecheck + production build in dist/
+npm version minor --no-git-tag-version   # bump the version shown in the app (or patch)
 ```
 
 Pushes are built, tested and deployed to GitHub Pages by

@@ -58,6 +58,11 @@ let extracted: Extracted | undefined;
 let lensSuggestions: LensSuggestions | undefined;
 let photoToken = 0;
 
+// Version in the header and tab title; the build id (commit) shows in Settings.
+$('version').textContent = `v${__APP_VERSION__}`;
+$('build-info').textContent = `Version ${__APP_VERSION__} (build ${__APP_BUILD__})`;
+document.title = `Toric IOL Request v${__APP_VERSION__}`;
+
 const settings = loadSettings();
 el.recipients.value = settings.recipients;
 el.clinician.value = settings.clinicianName;

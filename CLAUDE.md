@@ -11,6 +11,7 @@ A static, client-only phone PWA (Vite + vanilla TypeScript, no framework, no bac
 - `npm install`: the `postinstall` hook runs `scripts/copy-ocr-assets.mjs`, which copies the Tesseract worker, LSTM WASM cores and `eng.traineddata.gz` into `public/ocr/` (gitignored). If OCR requests 404, run that script again.
 - `npm run dev` / `npm run build` (runs `tsc --noEmit` then `vite build`) / `npm run preview`
 - Deploys to GitHub Pages via `.github/workflows/deploy.yml` on push (runs tests + build). `base: './'` in `vite.config.ts` keeps it working under the `/<repo>/` subpath.
+- Version: the single source is `version` in `package.json` (shown in the header, tab title and Settings; `vite.config.ts` injects it as `__APP_VERSION__`, plus the short commit as `__APP_BUILD__`). Bump it with `npm version patch|minor --no-git-tag-version` (this also updates `package-lock.json`; never `sed` the lockfile, other packages share version strings), and commit it with the change. Bump minor for new features, patch for fixes.
 - `npm test` (Vitest). Single file: `npx vitest run src/extract.test.ts`. Single test: `npx vitest run -t "UR number"`
 
 ## Hard constraints
