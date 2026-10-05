@@ -1,4 +1,4 @@
-import { parsePower } from './lenses';
+import { formatPower, parsePower } from './lenses';
 import type { RequestData, Settings } from './types';
 
 export const TORIC_THRESHOLD_D = 2;
@@ -8,11 +8,12 @@ export function emailSubject(req: RequestData): string {
 }
 
 /**
- * Default email text. Placeholders: `{patient}` ("SURNAME, First"), `{mrn}`, and
- * `{name}` (the sender's first name).
+ * Default email text. Placeholders: `{patient}` ("SURNAME, First"), `{mrn}`,
+ * `{lens}` ("ZCU300 +22.0D") and `{name}` (the sender's first name).
  */
 export const DEFAULT_EMAIL_BODY = [
   'RE: {patient} {mrn}',
+  '{lens}',
   '',
   'Hi All,',
   '',
@@ -29,6 +30,11 @@ export function patientName(req: Pick<RequestData, 'surname' | 'firstName'>): st
   return first ? `${surname}, ${first}` : surname;
 }
 
+/** "ZCU300 +22.0D": the lens model and its power as written on the order. */
+export function lensText(req: Pick<RequestData, 'lensModel' | 'lensPower'>): string {
+  return [req.lensModel.trim(), formatPower(req.lensPower)].filter(Boolean).join(' ');
+}
+
 export function emailBody(settings: Settings, req: RequestData): string {
   const firstName = settings.clinicianName.replace(/^(dr\.?|doctor)\s+/i, '').split(/\s+/)[0] ?? '';
   const template = settings.emailBody.trim() ? settings.emailBody : DEFAULT_EMAIL_BODY;
@@ -36,6 +42,7 @@ export function emailBody(settings: Settings, req: RequestData): string {
     .replace(/\r\n?/g, '\n')
     .replaceAll('{patient}', patientName(req))
     .replaceAll('{mrn}', req.mrn.trim())
+    .replaceAll('{lens}', lensText(req))
     .replaceAll('{name}', firstName)
     .trimEnd();
 }

@@ -19,7 +19,7 @@ toric IOL approval email for the lens coordinators:
 What you choose for each eye and lens type (Tecnis / Clareon / Other) is remembered while you work on a patient, so switching between them doesn't lose it.
 
 Lens powers can be typed any way ("16", "+16", "16.0D"); they are written as "+16.0D".
-The email text can be changed in Settings; `{patient}`, `{mrn}` and `{name}` (your first name) are filled in.
+The email text can be changed in Settings; `{patient}`, `{mrn}`, `{lens}` and `{name}` (your first name) are filled in.
 
 **No patient data is stored.** The photo, OCR text and fields stay in memory only and
 are cleared by "Next patient" or by closing the app. Text recognition runs on the

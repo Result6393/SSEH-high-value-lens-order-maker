@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attachmentStem, eligibilityWarning, emailBody, emailSubject, patientName, validate } from './email';
+import { attachmentStem, eligibilityWarning, emailBody, emailSubject, lensText, patientName, validate } from './email';
 import type { RequestData, Settings } from './types';
 
 const req: RequestData = {
@@ -12,16 +12,19 @@ describe('email', () => {
   it('builds subject, body and attachment names', () => {
     expect(emailSubject(req)).toBe('Toric IOL request - MRN 1234567 - Right eye');
     expect(emailBody(settings, req)).toBe(
-      'RE: CITIZEN, Jane 1234567\n\nHi All,\n\nPlease find a filled toric lens request form and biometry.\n\nAll the best,\nThomas',
+      'RE: CITIZEN, Jane 1234567\nZCU300 +22.0D\n\nHi All,\n\nPlease find a filled toric lens request form and biometry.\n\nAll the best,\nThomas',
     );
     expect(emailBody({ ...settings, clinicianName: 'Dr Jo Bloggs' }, req)).toMatch(/\nJo$/);
+    expect(lensText({ lensModel: 'CNA0T5', lensPower: '17.5' })).toBe('CNA0T5 +17.5D');
+    expect(lensText({ lensModel: 'ZCU300', lensPower: '' })).toBe('ZCU300');
+    expect(lensText({ lensModel: '', lensPower: '' })).toBe('');
     expect(patientName({ surname: 'o\'neil', firstName: '' })).toBe("O'NEIL");
     expect(attachmentStem({ ...req, eye: 'Left', mrn: '12/34' })).toBe('1234_L');
   });
 
   it('uses the custom email text, replacing placeholders everywhere, and falls back to the default when blank', () => {
-    const custom = { ...settings, emailBody: 'Hello team,\r\n\r\nRe {patient} ({mrn}, {mrn}).\r\n\r\nThanks, {name}\n\n' };
-    expect(emailBody(custom, req)).toBe('Hello team,\n\nRe CITIZEN, Jane (1234567, 1234567).\n\nThanks, Thomas');
+    const custom = { ...settings, emailBody: 'Hello team,\r\n\r\nRe {patient} ({mrn}, {mrn}) {lens}.\r\n\r\nThanks, {name}\n\n' };
+    expect(emailBody(custom, req)).toBe('Hello team,\n\nRe CITIZEN, Jane (1234567, 1234567) ZCU300 +22.0D.\n\nThanks, Thomas');
     expect(emailBody({ ...settings, emailBody: '   \n ' }, req)).toBe(emailBody(settings, req));
     expect(emailBody({ ...settings, emailBody: 'No placeholder here' }, req)).toBe('No placeholder here');
   });
