@@ -3,6 +3,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   base: './',
+  // Older iPhones (Safari < 16.4) silently fail to start on newer syntax; transpile for them.
+  build: { target: ['es2019', 'safari13'] },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',

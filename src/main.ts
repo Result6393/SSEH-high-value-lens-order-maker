@@ -309,3 +309,6 @@ $('reset').addEventListener('click', () => {
 });
 
 refresh();
+
+// Lets the boot check in index.html know the app started.
+(window as unknown as { __appStarted: boolean }).__appStarted = true;
