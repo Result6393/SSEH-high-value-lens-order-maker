@@ -1,8 +1,8 @@
 import './style.css';
 import { attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
 import { extractBiometry, type Extracted } from './extract';
-import { suggestPowers, type LensSuggestions } from './lens-table';
-import { FAMILIES, formatPower, type Platform } from './lenses';
+import { suggestLenses, type LensSuggestions } from './lens-table';
+import { FAMILIES, formatPower, modelForCylinder, type Platform } from './lenses';
 import { prepareImage } from './image';
 import { readPrintout } from './ocr';
 import { TEMPLATE_URL, fillOrderForm } from './pdf';
@@ -95,7 +95,14 @@ async function onPhoto(file: File): Promise<void> {
     const read = await readPrintout(ocr, (stage) => current() && setOcrStatus(stage));
     if (!current()) return;
     extracted = extractBiometry(read.passes);
-    lensSuggestions = suggestPowers(read.tables);
+    lensSuggestions = suggestLenses(read.tables);
+    // Barrett Toric pages only have tables for the eye being operated on.
+    const eyes = Object.keys(lensSuggestions) as Eye[];
+    let eyeNote = '';
+    if (!selectedEye() && eyes.length === 1) {
+      document.querySelector<HTMLInputElement>(`input[name="eye"][value="${eyes[0]}"]`)!.checked = true;
+      eyeNote = ` The lens tables are for the ${eyes[0].toUpperCase()} eye only, so it's selected.`;
+    }
     el.mrn.value = extracted.mrn;
     el.surname.value = extracted.surname;
     el.firstName.value = extracted.firstName;
@@ -113,6 +120,7 @@ async function onPhoto(file: File): Promise<void> {
         ? `Couldn't read the ${missing.join(', ')}. Fill it in by hand.`
         : 'Details read. Check them against the printout.',
     );
+    if (eyeNote) el.ocrStatus.textContent += eyeNote;
   } catch (e) {
     setOcrStatus(`Problem reading the photo: ${(e as Error).message}`);
   }
@@ -157,10 +165,12 @@ function fillLensPower(): void {
   if (!eye || !lensSuggestions || platform === 'Other') return refresh();
   const pick = lensSuggestions[eye]?.[platform];
   el.lensPower.value = pick ? String(pick.power) : '';
+  const model = pick?.cyl !== undefined ? modelForCylinder(platform, pick.cyl) : undefined;
+  if (model) el.lensModel.value = model;
   el.lensHint.hidden = false;
   el.lensHint.textContent = pick
-    ? `${formatPower(String(pick.power))} from the ${platform === 'ZCU' ? 'ZCB00' : 'Clareon CNA 0Tx'} table (${eye === 'Right' ? 'OD' : 'OS'}). Check it.`
-    : `Couldn't read the ${platform === 'ZCU' ? 'ZCB00' : 'Clareon'} table for this eye. Enter the power.`;
+    ? `${model ? `${model} ` : ''}${formatPower(String(pick.power))} from the ${pick.label} table (${eye === 'Right' ? 'OD' : 'OS'}). Check it.`
+    : `Couldn't read the ${platform === 'ZCU' ? 'Tecnis' : 'Alcon'} table for this eye. Enter the power.`;
   if (pick?.uncertain) {
     el.lensWarning.hidden = false;
     el.lensWarning.textContent = 'The table read inconsistently. Check the power against the printout.';

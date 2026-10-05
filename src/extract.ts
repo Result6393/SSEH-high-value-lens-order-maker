@@ -76,7 +76,7 @@ const afterLabel = (line: string, m: RegExpExecArray) =>
 // ---- MRN ----------------------------------------------------------------
 
 const MRN_LABELS = [
-  /\bpatient\s*[i1l]\s*d\b/i, // "Patient ID", "PatientID", OCR'd "Patient 1D"
+  /\bpat[il1]?ent\s*[i1l]\s*d\b/i, // "Patient ID", "PatientID", OCR'd "Patient 1D" / "Patent ID"
   /\bpat\.?\s*id\b/i,
   /\bmrn\b/i,
   /\bu\.?r\.?n?\.?(?:\s*(?:no|number))?\b/i,
@@ -105,7 +105,7 @@ function cleanMrn(raw: string): string {
 // ---- Name -----------------------------------------------------------------
 
 const NAME_STOP =
-  /\b(?:first\s*name|given\s*names?|forenames?|last\s*name|surname|d\.?o\.?b|date|birth|born|patient\s*[i1l]\s*d|pat\.?\s*id|id|sex|gender|mrn|u\.?r\.?n?|age)\b/i;
+  /\b(?:first\s*name|given\s*names?|forenames?|last\s*name|surname|d\.?o\.?b|date|birth|born|pat[il1]?ent\s*[i1l]\s*d|pat\.?\s*id|id|sex|gender|mrn|u\.?r\.?n?|age)\b/i;
 
 function findName(lines: string[]): { surname: string; firstName: string } | undefined {
   // Separate surname / first-name fields (e.g. Lenstar).
@@ -114,7 +114,8 @@ function findName(lines: string[]): { surname: string; firstName: string } | und
   if (last && first) return { surname: last, firstName: first };
 
   // Single field, e.g. IOLMaster "Patient   SURNAME, First" (no colon).
-  const single = labelled(lines, /\b(?:patient\s*name|patient(?!\s*[i1l]\s*d\b)|name)\b/i);
+  // OCR may drop or swap the "i": "Patent", "Patlent".
+  const single = labelled(lines, /\b(?:pat[il1]?ent\s*name|pat[il1]?ent(?!\s*[i1l]\s*d\b)|name)\b/i);
   if (single) return splitName(single);
   return last ? { surname: last, firstName: '' } : undefined;
 }

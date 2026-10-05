@@ -1,11 +1,7 @@
 import { PSM, createWorker, type Line, type Page, type Worker } from 'tesseract.js';
 import { crop } from './image';
-import { findLensTables, type TableRegion } from './lens-table';
+import { findLensTables, type TableText } from './lens-table';
 import type { OcrPass } from './ocr-types';
-
-export interface TableText extends Pick<TableRegion, 'eye' | 'platform'> {
-  text: string;
-}
 
 export interface PrintoutRead {
   /** Header pass first, then the full page. */
@@ -55,12 +51,19 @@ export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage:
 
   const tables: TableText[] = [];
   const regions = findLensTables(full, image.width);
-  await w.setParameters({ tessedit_char_whitelist: '0123456789.+-' });
+  await w.setParameters({ tessedit_char_whitelist: '0123456789.+-@T' });
   try {
+    const read = async (b: { x0: number; y0: number; x1: number; y1: number }) =>
+      (await w.recognize(crop(image, b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0, 2))).data.text;
     for (const [i, r] of regions.entries()) {
       progress = () => onProgress(`Reading lens tables… ${i + 1}/${regions.length}`);
-      const { data } = await w.recognize(crop(image, r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 2));
-      tables.push({ eye: r.eye, platform: r.platform, text: data.text });
+      tables.push({
+        eye: r.eye,
+        platform: r.platform,
+        label: r.label,
+        power: await read(r.power),
+        ...(r.toric ? { toric: await read(r.toric) } : {}),
+      });
     }
   } finally {
     await w.setParameters({ tessedit_char_whitelist: '' });
@@ -79,9 +82,9 @@ function toPass(page: Page): OcrPass {
 }
 
 function headerRegion(lines: Line[], height: number): { top: number; bottom: number } | undefined {
-  const start = lines.find((l) => /\bpatient\b/i.test(l.text));
+  const start = lines.find((l) => /\bpat[il1]?ent\b|date\s*of\s*b/i.test(l.text));
   if (!start) return undefined;
-  const end = lines.find((l) => l.bbox.y0 >= start.bbox.y0 && /physician|patient\s*[i1l]\s*d/i.test(l.text)) ?? start;
+  const end = lines.find((l) => l.bbox.y0 >= start.bbox.y0 && /physician|pat[il1]?ent\s*[i1l]\s*d/i.test(l.text)) ?? start;
   const lineH = start.bbox.y1 - start.bbox.y0;
   return {
     top: Math.max(0, start.bbox.y0 - 2 * lineH),

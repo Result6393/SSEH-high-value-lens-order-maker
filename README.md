@@ -3,11 +3,13 @@
 Phone web app (installable PWA) that turns a photo of a biometry printout into a
 toric IOL approval email for the lens coordinators:
 
-1. Photograph the IOLMaster biometry printout.
+1. Photograph the IOLMaster biometry printout (the both-eyes Barrett Universal II
+   page, or a one-eye Barrett Toric page, which also selects the eye).
 2. Pick the operative eye. MRN, name, date of birth and that eye's Ast. K are
    read from the photo (check them against the printout).
-3. Pick the lens: Tecnis ZCU (default) or Clareon, and the toric model. The
-   power is read from that lens's table on the printout for the chosen eye.
+3. Pick the lens: Tecnis ZCU (default) or Clareon. The power is read from that
+   lens's table for the chosen eye; on a Barrett Toric page the recommended toric
+   model (e.g. ZCU300, CNA0T5) is filled in too, otherwise pick it.
 4. Tap **Prepare email**: the SSEH high cost lens order form (filled in) and the
    photo go to the phone's share sheet. Choose Outlook, paste your recipients
    (already copied) into To, then send.

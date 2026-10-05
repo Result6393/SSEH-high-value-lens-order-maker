@@ -27,6 +27,15 @@ describe('extractBiometry', () => {
     expect(r.astK).toEqual({ Left: { power: '0.31', axis: '106' } });
   });
 
+  it('reads a real Barrett Toric page photo (fake identifiers)', () => {
+    const { passes }: { passes: OcrPass[] } = JSON.parse(readFileSync(new URL('../test/fixtures/iolmaster-700-toric-photo.json', import.meta.url), 'utf8'));
+    expect(extractBiometry(passes)).toMatchObject({ surname: 'KNIGHT', firstName: 'Tess', mrn: '3721234' });
+  });
+
+  it('tolerates OCR dropping the "i" in Patient', () => {
+    expect(extract('Patent    KNIGHT, Tess\nPatent ID 3721234')).toMatchObject({ surname: 'KNIGHT', mrn: '3721234' });
+  });
+
   it('assigns Ast. K to eyes by column, even when one label is lost', () => {
     const page = [
       'AL 24.19 mm      WTW 12.0 mm      AL 24.25 mm',

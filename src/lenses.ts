@@ -34,3 +34,12 @@ export function formatPower(power: string): string {
 export function roundToHalf(power: number): number {
   return Math.floor(power * 2 + 0.5) / 2;
 }
+
+const CYLINDERS = [1, 1.5, 2.25, 3, 3.75, 4.5, 5.25, 6];
+
+/** Toric model for a cylinder at the IOL plane: ZCU300 / CNA0T5 for 3.00 D. */
+export function modelForCylinder(platform: Exclude<Platform, 'Other'>, cyl: number): string | undefined {
+  const i = CYLINDERS.indexOf(cyl);
+  if (i < 0) return undefined;
+  return platform === 'ZCU' ? `ZCU${String(Math.round(cyl * 100)).padStart(3, '0')}` : `CNA0T${i + 2}`;
+}
