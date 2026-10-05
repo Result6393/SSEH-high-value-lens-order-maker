@@ -2,7 +2,15 @@ import { PSM, createWorker, type Line, type Page, type Worker } from 'tesseract.
 import { crop, rotate } from './image';
 import { findLensTables, type TableText } from './lens-table';
 import type { OcrPass } from './ocr-types';
-import { extractSticker, stickerBand, type Sticker } from './sticker';
+import { decodeBarcode } from './barcode';
+import { extractSticker, mrnFromBarcode, stickerBand, type Sticker } from './sticker';
+
+export interface StickerRead extends Sticker {
+  /** The MRN came from the barcode. */
+  mrnFromBarcode: boolean;
+  /** The barcode and the printed number were both read and differ. */
+  mrnConflict: boolean;
+}
 
 export interface PrintoutRead {
   /** Header pass first, then the full page. */
@@ -77,14 +85,16 @@ export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage:
  * cleaner read. If that doesn't find both MRN and name, the photo is tried turned a
  * quarter either way (stickers are often photographed sideways), keeping the best read.
  */
-export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<Sticker> {
+export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<StickerRead> {
   const w = await getWorker();
   await w.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: '' });
   let best: Sticker = { mrn: '', surname: '', firstName: '', dob: '' };
+  let barcodeMrn = '';
   const score = (s: Sticker) => Number(!!s.mrn) + Number(!!s.surname) + Number(!!s.dob) / 2;
   for (const turns of [0, 1, 3]) {
     const img = turns ? rotate(image, turns) : image;
     const label = turns ? ' (turned)' : '';
+    barcodeMrn ||= mrnFromBarcode(decodeBarcode(img));
     progress = (p) => onProgress(`Reading sticker${label}… ${Math.round(p * 100)}%`);
     const page = (await w.recognize(img, {}, { blocks: true })).data;
     const passes = [toPass(page)];
@@ -96,9 +106,10 @@ export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: 
     }
     const sticker = extractSticker(passes);
     if (score(sticker) > score(best)) best = sticker;
-    if (best.mrn && best.surname) break;
+    if ((best.mrn || barcodeMrn) && best.surname) break;
   }
-  return best;
+  // The barcode is the reliable source for the MRN; a differing printed number is flagged.
+  return { ...best, mrn: barcodeMrn || best.mrn, mrnFromBarcode: !!barcodeMrn, mrnConflict: !!barcodeMrn && !!best.mrn && barcodeMrn !== best.mrn };
 }
 
 const linesOf = (page: Page): Line[] => (page.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines));

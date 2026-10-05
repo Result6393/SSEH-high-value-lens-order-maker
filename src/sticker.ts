@@ -29,6 +29,15 @@ const STREET = /\b(?:st|street|rd|road|ave|avenue|dr|drive|pde|parade|lane|ln|cr
 export const hospitalLine = (text: string): boolean => HOSPITAL.test(text);
 export const dobLine = (text: string): boolean => DOB_LINE.test(text);
 
+/**
+ * The MRN in a sticker barcode: Code 39 text like "4872845.SYD" (MRN, then a site
+ * suffix). Returns '' when the text isn't a 6-10 digit number.
+ */
+export function mrnFromBarcode(text: string | undefined): string {
+  const digits = (text ?? '').trim().replace(/\.[A-Za-z]{2,4}$/, '').replace(/[-\s]/g, '');
+  return /^\d{6,10}$/.test(digits) ? digits : '';
+}
+
 /** Earlier passes win field by field (pass the tight crop first, then the full photo). */
 export function extractSticker(passes: OcrPass[]): Sticker {
   const parsed = passes.map(parseOne);
@@ -57,11 +66,15 @@ function parseOne(pass: OcrPass) {
   };
 }
 
-/** A standalone 6-10 digit number; OCR often reads 0 as O and 1 as I/l in IDs. */
+/**
+ * A standalone 6-10 digit number; OCR often reads 0 as O and 1 as I/l in IDs. The sticker
+ * prints it with dashes ("487-28-45"), which are dropped.
+ */
 function findMrn(lines: string[]): string {
   for (const line of lines) {
     for (const token of line.split(/\s+/)) {
       const t = token.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '');
+      if (/^\d{2,4}(?:-\d{2,4}){1,3}$/.test(t) && /^\d{6,10}$/.test(t.replace(/-/g, ''))) return t.replace(/-/g, '');
       if (/^[0-9OoIl]{6,10}$/.test(t) && (t.match(/\d/g)?.length ?? 0) >= 5) return t.replace(/[Oo]/g, '0').replace(/[Il]/g, '1');
     }
   }
