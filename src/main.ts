@@ -2,6 +2,7 @@ import './style.css';
 import { DEFAULT_EMAIL_BODY, TORIC_THRESHOLD_D, attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
 import { extractBiometry, type Extracted } from './extract';
 import { suggestLenses, type LensSuggestions } from './lens-table';
+import { LensMemory } from './lens-memory';
 import { FAMILIES, formatPower, inferEye, modelForCylinder, type Platform } from './lenses';
 import { prepareAttachment, prepareImage } from './image';
 import { readPrintout } from './ocr';
@@ -56,6 +57,7 @@ let extras: { blob: Blob; url: string }[] = [];
 let previewUrl: string | undefined;
 let extracted: Extracted | undefined;
 let lensSuggestions: LensSuggestions | undefined;
+const lensMemory = new LensMemory();
 let photoToken = 0;
 
 // Version in the header and tab title; the build id (commit) shows in Settings.
@@ -149,6 +151,7 @@ async function onPhoto(file: File): Promise<void> {
     if (!current()) return;
     photo = jpeg;
     prepared = undefined;
+    lensMemory.clear(); // a new printout starts a fresh set of lens choices
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     previewUrl = URL.createObjectURL(jpeg);
     el.preview.src = previewUrl;
@@ -172,7 +175,7 @@ async function onPhoto(file: File): Promise<void> {
     el.dob.value = extracted.dob;
     el.mrnWarning.hidden = !extracted.mrnUncertain;
     fillAstK();
-    fillLensPower();
+    showLens();
     const missing = [
       !extracted.mrn && 'MRN',
       !extracted.surname && 'name',
@@ -216,27 +219,57 @@ function selectPlatform(platform: Platform): void {
       ...family.models.map((m) => new Option(m, m)),
     );
   }
-  fillLensPower();
+  showLens();
 }
 
-/** Power read from the printout's table for the selected eye and lens family. */
-function fillLensPower(): void {
+/** Stores what is on screen as the user's choice for the current eye and lens family. */
+function rememberLens(): void {
+  const platform = selectedPlatform();
+  lensMemory.remember(selectedEye(), platform, {
+    model: platform === 'Other' ? el.lensModelOther.value : el.lensModel.value,
+    power: el.lensPower.value,
+    company: el.company.value,
+  });
+}
+
+/**
+ * Fills the lens fields for the current eye and lens family: the user's earlier
+ * choice if there is one, otherwise what the printout suggests (power from that
+ * lens's table and, on Barrett Toric pages, the recommended model).
+ */
+function showLens(): void {
   const eye = selectedEye();
   const platform = selectedPlatform();
   el.lensWarning.hidden = true;
   el.lensHint.hidden = true;
-  if (!eye || !lensSuggestions || platform === 'Other') return refresh();
-  const pick = lensSuggestions[eye]?.[platform];
-  el.lensPower.value = pick ? formatPower(String(pick.power)) : '';
-  const model = pick?.cyl !== undefined ? modelForCylinder(platform, pick.cyl) : undefined;
-  if (model) el.lensModel.value = model;
-  el.lensHint.hidden = false;
-  el.lensHint.textContent = pick
-    ? `${model ? `${model} ` : ''}${formatPower(String(pick.power))} from the ${pick.label} table (${eye === 'Right' ? 'OD' : 'OS'}). Check it.`
-    : `No ${platform === 'ZCU' ? 'Tecnis' : 'Clareon'} table could be read for this eye. Enter the model and power.`;
-  if (pick?.uncertain) {
-    el.lensWarning.hidden = false;
-    el.lensWarning.textContent = 'Part of the table was unclear. Check the power against the printout.';
+  const pick = eye && platform !== 'Other' ? lensSuggestions?.[eye]?.[platform] : undefined;
+  const suggestedModel = pick?.cyl !== undefined && platform !== 'Other' ? modelForCylinder(platform, pick.cyl) : undefined;
+  const side = eye ? ` (${eye === 'Right' ? 'OD' : 'OS'})` : '';
+  const saved = lensMemory.recall(eye, platform);
+
+  if (saved) {
+    (platform === 'Other' ? el.lensModelOther : el.lensModel).value = saved.model;
+    el.lensPower.value = saved.power;
+    el.company.value = saved.company;
+    el.lensHint.hidden = false;
+    el.lensHint.textContent =
+      'Your earlier choice for this eye and lens.' +
+      (pick ? ` The printout suggests ${suggestedModel ? `${suggestedModel} ` : ''}${formatPower(String(pick.power))}${side}.` : '');
+  } else {
+    el.lensModelOther.value = '';
+    el.company.value = '';
+    el.lensPower.value = pick ? formatPower(String(pick.power)) : '';
+    el.lensModel.value = suggestedModel ?? '';
+    if (eye && lensSuggestions && platform !== 'Other') {
+      el.lensHint.hidden = false;
+      el.lensHint.textContent = pick
+        ? `${suggestedModel ? `${suggestedModel} ` : ''}${formatPower(String(pick.power))} from the ${pick.label} table${side}. Check it.`
+        : `No ${platform === 'ZCU' ? 'Tecnis' : 'Clareon'} table could be read for this eye. Enter the model and power.`;
+      if (pick?.uncertain) {
+        el.lensWarning.hidden = false;
+        el.lensWarning.textContent = 'Part of the table was unclear. Check the power against the printout.';
+      }
+    }
   }
   refresh();
 }
@@ -287,7 +320,7 @@ function refresh(): void {
 document.querySelectorAll('input[name="eye"]').forEach((r) =>
   r.addEventListener('change', () => {
     fillAstK();
-    fillLensPower();
+    showLens();
   }),
 );
 document.querySelectorAll<HTMLInputElement>('input[name="platform"]').forEach((r) =>
@@ -296,10 +329,19 @@ document.querySelectorAll<HTMLInputElement>('input[name="platform"]').forEach((r
     saveSettings({ ...settings, lensPlatform: (settings.lensPlatform = r.value as Platform) });
   }),
 );
-el.lensModel.addEventListener('change', refresh);
-el.lensPower.addEventListener('input', () => (el.lensWarning.hidden = true));
+// Anything the user picks or types is remembered for this eye and lens family.
+el.lensModel.addEventListener('change', rememberLens);
+el.lensModelOther.addEventListener('input', rememberLens);
+el.company.addEventListener('input', rememberLens);
+el.lensPower.addEventListener('input', () => {
+  el.lensWarning.hidden = true;
+  rememberLens();
+});
 // Typing "16" becomes "+16.0D" when leaving the field.
-el.lensPower.addEventListener('change', () => (el.lensPower.value = formatPower(el.lensPower.value)));
+el.lensPower.addEventListener('change', () => {
+  el.lensPower.value = formatPower(el.lensPower.value);
+  rememberLens();
+});
 selectPlatform(settings.lensPlatform);
 el.mrn.addEventListener('input', () => (el.mrnWarning.hidden = true));
 document.querySelector('main')!.addEventListener('input', refresh);
@@ -372,8 +414,9 @@ $('reset').addEventListener('click', () => {
   el.extrasStatus.hidden = true;
   for (const i of patientInputs) i.value = '';
   el.mrnWarning.hidden = true;
-  selectPlatform(settings.lensPlatform);
+  lensMemory.clear();
   document.querySelectorAll<HTMLInputElement>('input[name="eye"]').forEach((r) => (r.checked = false));
+  selectPlatform(settings.lensPlatform);
   setOcrStatus('');
   el.sendStatus.textContent = '';
   refresh();

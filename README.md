@@ -15,6 +15,8 @@ toric IOL approval email for the lens coordinators:
    biometry photo and any extra images go to the phone's share sheet. Choose Outlook, paste your recipients
    (already copied) into To, then send.
 
+What you choose for each eye and lens type (Tecnis / Clareon / Other) is remembered while you work on a patient, so switching between them doesn't lose it.
+
 Lens powers can be typed any way ("16", "+16", "16.0D"); they are written as "+16.0D".
 The email text can be changed in Settings; `{patient}`, `{mrn}` and `{name}` (your first name) are filled in.
 
