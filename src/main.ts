@@ -8,6 +8,7 @@ import { prepareAttachment, prepareImage } from './image';
 import { readPrintout } from './ocr';
 import { DEFAULT_DIAGNOSIS, TEMPLATE_URL, fillOrderForm } from './pdf';
 import { loadSettings, saveSettings } from './settings';
+import { parseRecipients } from './recipients';
 import { shareEmail, type EmailDraft } from './share';
 import type { Eye, RequestData } from './types';
 
@@ -17,6 +18,7 @@ const input = (id: string) => $<HTMLInputElement>(id);
 const el = {
   settings: $('settings'),
   recipients: $<HTMLTextAreaElement>('recipients'),
+  recipientsInfo: $('recipients-info'),
   clinician: input('clinician'),
   contact: input('contact'),
   emailBody: $<HTMLTextAreaElement>('email-body'),
@@ -74,7 +76,15 @@ el.clinician.value = settings.clinicianName;
 el.contact.value = settings.contactNumber;
 el.emailBody.value = settings.emailBody || DEFAULT_EMAIL_BODY;
 el.vmo.value = settings.vmo;
-if (!settings.clinicianName || !settings.recipients) el.settings.hidden = false;
+if (!settings.clinicianName || !parseRecipients(settings.recipients).length) el.settings.hidden = false;
+
+/** Says how many addresses were recognised, so a mis-typed list is noticed before sending. */
+function showRecipientCount(): void {
+  const n = parseRecipients(el.recipients.value).length;
+  el.recipientsInfo.textContent = n ? `${n} address${n === 1 ? '' : 'es'} recognised.` : 'No email addresses found yet.';
+}
+el.recipients.addEventListener('input', showRecipientCount);
+showRecipientCount();
 
 $('settings-btn').addEventListener('click', () => (el.settings.hidden = !el.settings.hidden));
 $('settings-done').addEventListener('click', () => {
@@ -312,7 +322,7 @@ function refresh(): void {
   const problems = req ? validate(req) : [];
   if (!photo) problems.unshift('Take a photo of the biometry.');
   if (!req) problems.unshift('Choose the operative eye.');
-  if (!settings.recipients) problems.push('Add the recipient emails in Settings.');
+  if (!parseRecipients(settings.recipients).length) problems.push('Add the recipient emails in Settings.');
   if (!settings.clinicianName) problems.push('Add your name in Settings.');
   const warning = req && eligibilityWarning(req);
   el.astWarning.textContent = warning ?? '';

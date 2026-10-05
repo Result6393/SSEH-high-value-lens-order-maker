@@ -14,7 +14,7 @@ toric IOL approval email for the lens coordinators:
 5. Optionally add more images ("Take another" / "Add images") to attach as well.
 6. Tap **Prepare email**: the SSEH high cost lens order form (filled in), the
    biometry photo and any extra images go to the phone's share sheet. Choose Outlook, paste your recipients
-   (already copied) into To, then send.
+   (already copied, separated by semicolons so Outlook takes them all) into To, then send.
 
 What you choose for each eye and lens type (Tecnis / Clareon / Other) is remembered while you work on a patient, so switching between them doesn't lose it.
 

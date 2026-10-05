@@ -42,9 +42,10 @@
     <section id="settings" hidden>
       <h2>Settings</h2>
       <p class="hint">Saved on this phone only. No patient data is ever saved.</p>
-      <label>Send to (lens coordinators' emails, separated by commas)
+      <label>Send to (lens coordinators' emails; paste a list from Outlook if you like)
         <textarea id="recipients" rows="4" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
       </label>
+      <p id="recipients-info" class="hint"></p>
       <label>Your name (Submitted by)
         <input id="clinician" type="text" autocomplete="name" />
       </label>
@@ -131,7 +132,7 @@
     <section id="step-send">
       <h2>5. Send</h2>
       <ul id="problems" class="problems"></ul>
-      <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. Your recipients are copied, so paste them into To.</p>
+      <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. Your recipients are copied (separated by semicolons), so paste them into To.</p>
       <button id="send" class="primary" type="button" disabled>Prepare email</button>
       <button id="reset" type="button">Next patient</button>
       <p id="send-status" class="hint"></p>
