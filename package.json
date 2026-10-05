@@ -1,0 +1,34 @@
+{
+  "name": "sseh-high-value-lens-order-maker",
+  "version": "1.0.0",
+  "description": "Phone web app that prepares toric IOL approval emails from a biometry photo",
+  "scripts": {
+    "postinstall": "node scripts/copy-ocr-assets.mjs",
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Result6393/SSEH-high-value-lens-order-maker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Result6393/SSEH-high-value-lens-order-maker/issues"
+  },
+  "homepage": "https://github.com/Result6393/SSEH-high-value-lens-order-maker#readme",
+  "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
+    "pdf-lib": "^1.17.1",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.3"
+  },
+  "private": true,
+  "type": "module"
+}

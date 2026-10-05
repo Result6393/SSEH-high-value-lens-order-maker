@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b5cad" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Toric IOL" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <title>Toric IOL Request</title>
+</head>
+<body>
+  <header>
+    <h1>Toric IOL Request</h1>
+    <button id="settings-btn" class="link" type="button">Settings</button>
+  </header>
+
+  <main>
+    <section id="settings" hidden>
+      <h2>Settings</h2>
+      <p class="hint">Saved on this phone only. No patient data is ever saved.</p>
+      <label>Lens coordinator email(s)
+        <input id="recipients" type="email" multiple autocomplete="off" placeholder="lens.coordinators@health.example" />
+      </label>
+      <label>Your name (for sign-off)
+        <input id="clinician" type="text" autocomplete="name" />
+      </label>
+      <button id="settings-done" type="button">Done</button>
+    </section>
+
+    <section id="step-photo">
+      <h2>1. Biometry photo</h2>
+      <div class="row">
+        <label class="button primary">Take photo
+          <input id="camera" type="file" accept="image/*" capture="environment" hidden />
+        </label>
+        <label class="button">Choose photo
+          <input id="library" type="file" accept="image/*" hidden />
+        </label>
+      </div>
+      <img id="preview" alt="Biometry photo" hidden />
+      <p id="ocr-status" class="hint" hidden></p>
+    </section>
+
+    <section id="step-details">
+      <h2>2. Check details</h2>
+      <fieldset class="eye">
+        <legend>Operative eye</legend>
+        <label><input type="radio" name="eye" value="Right" /> Right</label>
+        <label><input type="radio" name="eye" value="Left" /> Left</label>
+      </fieldset>
+      <label>Patient name <input id="name" type="text" autocomplete="off" /></label>
+      <label>MRN <input id="mrn" type="text" autocomplete="off" inputmode="text" /></label>
+      <label>Corneal astigmatism, D (optional) <input id="cyl" type="text" inputmode="decimal" autocomplete="off" /></label>
+      <ul id="problems" class="problems"></ul>
+    </section>
+
+    <section id="step-send">
+      <h2>3. Send</h2>
+      <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. The coordinator address is copied, so paste it into To.</p>
+      <button id="send" class="primary" type="button" disabled>Prepare email</button>
+      <button id="reset" type="button">Next patient</button>
+      <p id="send-status" class="hint"></p>
+    </section>
+  </main>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
