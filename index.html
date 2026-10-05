@@ -20,11 +20,14 @@
     <section id="settings" hidden>
       <h2>Settings</h2>
       <p class="hint">Saved on this phone only. No patient data is ever saved.</p>
-      <label>Lens coordinator email(s)
-        <input id="recipients" type="email" multiple autocomplete="off" placeholder="lens.coordinators@health.example" />
+      <label>Lens coordinator emails
+        <textarea id="recipients" rows="4" autocomplete="off"></textarea>
       </label>
-      <label>Your name (for sign-off)
+      <label>Your name (Submitted by)
         <input id="clinician" type="text" autocomplete="name" />
+      </label>
+      <label>Contact number
+        <input id="contact" type="tel" autocomplete="tel" />
       </label>
       <button id="settings-done" type="button">Done</button>
     </section>
@@ -44,21 +47,30 @@
     </section>
 
     <section id="step-details">
-      <h2>2. Check details</h2>
+      <h2>2. Operative eye</h2>
       <fieldset class="eye">
-        <legend>Operative eye</legend>
-        <label><input type="radio" name="eye" value="Right" /> Right</label>
-        <label><input type="radio" name="eye" value="Left" /> Left</label>
+        <label><input type="radio" name="eye" value="Right" /> Right (OD)</label>
+        <label><input type="radio" name="eye" value="Left" /> Left (OS)</label>
       </fieldset>
-      <label>Patient name <input id="name" type="text" autocomplete="off" /></label>
-      <label>MRN <input id="mrn" type="text" autocomplete="off" inputmode="text" /></label>
-      <label>Corneal astigmatism, D (optional) <input id="cyl" type="text" inputmode="decimal" autocomplete="off" /></label>
+      <h2>3. Check details</h2>
+      <label>MRN <input id="mrn" type="text" autocomplete="off" /></label>
+      <p id="mrn-warning" class="warning" hidden>The MRN read differently on two passes. Check every digit against the printout.</p>
+      <label>Surname <input id="surname" type="text" autocomplete="off" /></label>
+      <label>First name <input id="first-name" type="text" autocomplete="off" /></label>
+      <label>Date of birth (dd/mm/yyyy) <input id="dob" type="text" inputmode="numeric" autocomplete="off" /></label>
+      <div class="row">
+        <label>Ast. K (D) <input id="astk" type="text" inputmode="decimal" autocomplete="off" /></label>
+        <label>Axis (°) <input id="axis" type="text" inputmode="numeric" autocomplete="off" /></label>
+      </div>
+      <p id="ast-warning" class="warning" hidden></p>
+      <label>VMO surgeon <input id="vmo" type="text" autocomplete="off" /></label>
+      <label>Proposed surgery date (optional) <input id="surgery-date" type="date" /></label>
       <ul id="problems" class="problems"></ul>
     </section>
 
     <section id="step-send">
-      <h2>3. Send</h2>
-      <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. The coordinator address is copied, so paste it into To.</p>
+      <h2>4. Send</h2>
+      <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. The coordinator addresses are copied, so paste them into To.</p>
       <button id="send" class="primary" type="button" disabled>Prepare email</button>
       <button id="reset" type="button">Next patient</button>
       <p id="send-status" class="hint"></p>
