@@ -1,5 +1,5 @@
 import { formatPower, parsePower } from './lenses';
-import type { RequestData, Settings } from './types';
+import type { RequestData, Settings, TutoplastRequest } from './types';
 
 export const TORIC_THRESHOLD_D = 2;
 
@@ -36,28 +36,58 @@ export function lensText(req: Pick<RequestData, 'lensModel' | 'lensPower'>): str
 }
 
 export function emailBody(settings: Settings, req: RequestData): string {
+  return render(settings.emailBody, DEFAULT_EMAIL_BODY, settings, req, lensText(req));
+}
+
+/** Default text for tutoplast orders; `{lens}` is the implant ("Tutoplast"). */
+export const DEFAULT_TUTOPLAST_EMAIL_BODY = [
+  'RE: {patient} {mrn}',
+  '{lens}',
+  '',
+  'Hi All,',
+  '',
+  "Here's a tutoplast order form.",
+  '',
+  'All the best,',
+  '{name}',
+].join('\n');
+
+export function tutoplastSubject(req: TutoplastRequest): string {
+  return `Tutoplast order - MRN ${req.mrn} - ${req.eye} eye`;
+}
+
+export function tutoplastBody(settings: Settings, req: TutoplastRequest): string {
+  return render(settings.tutoplastEmailBody, DEFAULT_TUTOPLAST_EMAIL_BODY, settings, req, req.implant.trim());
+}
+
+function render(custom: string, stock: string, settings: Settings, req: Pick<RequestData, 'surname' | 'firstName' | 'mrn'>, lens: string): string {
   const firstName = settings.clinicianName.replace(/^(dr\.?|doctor)\s+/i, '').split(/\s+/)[0] ?? '';
-  const template = settings.emailBody.trim() ? settings.emailBody : DEFAULT_EMAIL_BODY;
-  return template
+  return (custom.trim() ? custom : stock)
     .replace(/\r\n?/g, '\n')
     .replaceAll('{patient}', patientName(req))
     .replaceAll('{mrn}', req.mrn.trim())
-    .replaceAll('{lens}', lensText(req))
+    .replaceAll('{lens}', lens)
     .replaceAll('{name}', firstName)
     .trimEnd();
 }
 
 /** Filesystem-safe base name for the attachments, e.g. "1234567_R". */
-export function attachmentStem(req: RequestData): string {
+export function attachmentStem(req: Pick<RequestData, 'mrn' | 'eye'>): string {
   return `${req.mrn.replace(/[^A-Za-z0-9-]/g, '') || 'patient'}_${req.eye[0]}`;
 }
 
-export function validate(req: RequestData): string[] {
+/** The patient checks both order types share. */
+export function validatePatient(req: Pick<RequestData, 'surname' | 'firstName' | 'mrn' | 'dob'>): string[] {
   const problems: string[] = [];
   if (!req.surname.trim()) problems.push('Surname is missing.');
   if (!req.firstName.trim()) problems.push('First name is missing.');
   if (!req.mrn.trim()) problems.push('MRN is missing.');
   if (req.dob && !/^\d{2}\/\d{2}\/\d{4}$/.test(req.dob)) problems.push('Date of birth should be dd/mm/yyyy.');
+  return problems;
+}
+
+export function validate(req: RequestData): string[] {
+  const problems = validatePatient(req);
   if (req.astK && Number.isNaN(Number(req.astK))) problems.push('Ast. K should be a number.');
   if (!req.lensModel.trim()) problems.push('Choose the toric lens model.');
   const power = parsePower(req.lensPower);

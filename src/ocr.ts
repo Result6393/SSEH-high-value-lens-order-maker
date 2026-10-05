@@ -1,7 +1,8 @@
 import { PSM, createWorker, type Line, type Page, type Worker } from 'tesseract.js';
-import { crop } from './image';
+import { crop, rotate } from './image';
 import { findLensTables, type TableText } from './lens-table';
 import type { OcrPass } from './ocr-types';
+import { extractSticker, stickerBand, type Sticker } from './sticker';
 
 export interface PrintoutRead {
   /** Header pass first, then the full page. */
@@ -69,6 +70,35 @@ export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage:
     await w.setParameters({ tessedit_char_whitelist: '' });
   }
   return { passes, tables };
+}
+
+/**
+ * Reads a patient sticker: the whole photo, then a tight crop of the sticker for a
+ * cleaner read. If that doesn't find both MRN and name, the photo is tried turned a
+ * quarter either way (stickers are often photographed sideways), keeping the best read.
+ */
+export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<Sticker> {
+  const w = await getWorker();
+  await w.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: '' });
+  let best: Sticker = { mrn: '', surname: '', firstName: '', dob: '' };
+  const score = (s: Sticker) => Number(!!s.mrn) + Number(!!s.surname) + Number(!!s.dob) / 2;
+  for (const turns of [0, 1, 3]) {
+    const img = turns ? rotate(image, turns) : image;
+    const label = turns ? ' (turned)' : '';
+    progress = (p) => onProgress(`Reading sticker${label}… ${Math.round(p * 100)}%`);
+    const page = (await w.recognize(img, {}, { blocks: true })).data;
+    const passes = [toPass(page)];
+    const band = stickerBand(linesOf(page).map((l) => ({ text: l.text, y0: l.bbox.y0, y1: l.bbox.y1 })));
+    if (band && band.bottom - band.top > 10) {
+      progress = (p) => onProgress(`Checking sticker${label}… ${Math.round(p * 100)}%`);
+      const tight = await w.recognize(crop(img, 0, band.top, img.width, band.bottom - band.top, 1.5), {}, { blocks: true });
+      passes.unshift(toPass(tight.data));
+    }
+    const sticker = extractSticker(passes);
+    if (score(sticker) > score(best)) best = sticker;
+    if (best.mrn && best.surname) break;
+  }
+  return best;
 }
 
 const linesOf = (page: Page): Line[] => (page.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines));

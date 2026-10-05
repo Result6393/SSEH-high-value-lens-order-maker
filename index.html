@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="Toric IOL" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-  <title>Toric IOL Request</title>
+  <title>SSEH Orders</title>
   <script>
     // If the app fails to start (e.g. an old browser), say so on screen instead of doing nothing.
     (function () {
@@ -34,7 +34,7 @@
 </head>
 <body>
   <header>
-    <h1>Toric IOL Request <span id="version" class="version"></span></h1>
+    <h1>SSEH Orders <span id="version" class="version"></span></h1>
     <button id="settings-btn" class="link" type="button">Settings</button>
   </header>
 
@@ -57,10 +57,21 @@
       </label>
       <p class="hint">Blank lines are kept. <code>{patient}</code>, <code>{mrn}</code> and <code>{lens}</code> are replaced with the patient's name, MRN and lens (e.g. ZCU300 +22.0D), and <code>{name}</code> with your first name.</p>
       <button id="email-reset" type="button">Reset email text to default</button>
+      <label>Tutoplast email text
+        <textarea id="tp-email-body" rows="8" autocomplete="off" spellcheck="true"></textarea>
+      </label>
+      <p class="hint">Same placeholders; <code>{lens}</code> is the implant (Tutoplast).</p>
+      <button id="tp-email-reset" type="button">Reset tutoplast email text to default</button>
       <button id="settings-done" class="primary" type="button">Done</button>
       <p id="build-info" class="hint"></p>
     </section>
 
+    <nav class="tabs" role="tablist">
+      <button id="tab-toric-btn" type="button" role="tab" aria-selected="true" aria-controls="tab-toric">Toric lens</button>
+      <button id="tab-tutoplast-btn" type="button" role="tab" aria-selected="false" aria-controls="tab-tutoplast">Tutoplast</button>
+    </nav>
+
+    <div id="tab-toric" class="tab" role="tabpanel">
     <section id="step-photo">
       <h2>1. Biometry photo</h2>
       <div class="row">
@@ -137,6 +148,60 @@
       <button id="reset" type="button">Next patient</button>
       <p id="send-status" class="hint"></p>
     </section>
+    </div>
+
+    <div id="tab-tutoplast" class="tab" role="tabpanel" hidden>
+      <section>
+        <h2>1. Patient sticker</h2>
+        <p class="hint" style="margin-top:0">Photograph the patient sticker. No biometry is needed.</p>
+        <div class="row">
+          <label class="button primary">Take photo
+            <input id="tp-camera" type="file" accept="image/*" capture="environment" hidden />
+          </label>
+          <label class="button">Choose photo
+            <input id="tp-library" type="file" accept="image/*" hidden />
+          </label>
+        </div>
+        <img id="tp-preview" alt="Patient sticker photo" hidden />
+        <p id="tp-ocr-status" class="hint" hidden></p>
+      </section>
+
+      <section>
+        <h2>2. Operative eye</h2>
+        <fieldset class="eye">
+          <label><input type="radio" name="tp-eye" value="Right" /> Right (OD)</label>
+          <label><input type="radio" name="tp-eye" value="Left" /> Left (OS)</label>
+        </fieldset>
+        <h2>3. Check details</h2>
+        <label>MRN <input id="tp-mrn" type="text" autocomplete="off" /></label>
+        <label>Surname <input id="tp-surname" type="text" autocomplete="off" /></label>
+        <label>First name <input id="tp-first-name" type="text" autocomplete="off" /></label>
+        <label>Date of birth (dd/mm/yyyy) <input id="tp-dob" type="text" inputmode="numeric" autocomplete="off" /></label>
+        <label>VMO surgeon <input id="tp-vmo" type="text" autocomplete="off" /></label>
+        <label>Proposed surgery date (optional) <input id="tp-surgery-date" type="date" /></label>
+      </section>
+
+      <section>
+        <h2>4. Diagnosis</h2>
+        <label>Diagnosis (on the order form)
+          <select id="tp-diagnosis"></select>
+        </label>
+        <label id="tp-diagnosis-other-wrap" hidden>Diagnosis text
+          <textarea id="tp-diagnosis-other" rows="3" autocomplete="off"></textarea>
+        </label>
+        <label>Implant <input id="tp-implant" type="text" autocomplete="off" /></label>
+        <label>Company <input id="tp-company" type="text" autocomplete="off" /></label>
+      </section>
+
+      <section>
+        <h2>5. Send</h2>
+        <ul id="tp-problems" class="problems"></ul>
+        <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. Your recipients are copied (separated by semicolons), so paste them into To.</p>
+        <button id="tp-send" class="primary" type="button" disabled>Prepare email</button>
+        <button id="tp-reset" type="button">Next patient</button>
+        <p id="tp-send-status" class="hint"></p>
+      </section>
+    </div>
   </main>
   <script type="module" src="/src/main.ts"></script>
 </body>
