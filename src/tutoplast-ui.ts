@@ -6,6 +6,7 @@ import { fillTutoplastForm } from './pdf';
 import { parseRecipients } from './recipients';
 import { saveSettings } from './settings';
 import { shareEmail, type EmailDraft } from './share';
+import { NEXT_PATIENT, type PatientDetails } from './patient';
 import { initStickerStep, stickerName } from './sticker-ui';
 import { DEFAULT_COMPANY, DEFAULT_IMPLANT, OTHER_DIAGNOSIS, TUTOPLAST_DIAGNOSES, diagnosisText, validateTutoplast } from './tutoplast';
 import type { Eye, Settings, TutoplastRequest } from './types';
@@ -13,7 +14,7 @@ import type { Eye, Settings, TutoplastRequest } from './types';
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const input = (id: string) => $<HTMLInputElement>(id);
 
-export function initTutoplast(opts: { settings: Settings; template: Promise<ArrayBuffer> }): void {
+export function initTutoplast(opts: { settings: Settings; template: Promise<ArrayBuffer> }): { getDetails(): PatientDetails; setDetails(d: PatientDetails): void } {
   const { settings, template } = opts;
   const el = {
     camera: input('tp-camera'),
@@ -117,7 +118,8 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     };
   }
 
-  $('tp-reset').addEventListener('click', () => {
+  $('tp-reset').addEventListener('click', () => document.dispatchEvent(new Event(NEXT_PATIENT)));
+  document.addEventListener(NEXT_PATIENT, () => {
     prepared = undefined;
     sticker.reset();
     for (const i of [el.mrn, el.name, el.surgeryDate]) i.value = '';
@@ -132,4 +134,18 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
   });
 
   refresh();
+
+  return {
+    getDetails: () => ({ mrn: el.mrn.value.trim(), name: el.name.value.trim(), eye: selectedEye(), vmo: el.vmo.value.trim(), surgeryDate: el.surgeryDate.value }),
+    /** Fills in what the other tab has; blank values leave this tab's own untouched. */
+    setDetails(d) {
+      if (d.mrn) el.mrn.value = d.mrn;
+      if (d.name) el.name.value = d.name;
+      if (d.vmo) el.vmo.value = d.vmo;
+      if (d.surgeryDate) el.surgeryDate.value = d.surgeryDate;
+      if (d.eye) document.querySelector<HTMLInputElement>(`input[name="tp-eye"][value="${d.eye}"]`)!.checked = true;
+      prepared = undefined;
+      refresh();
+    },
+  };
 }

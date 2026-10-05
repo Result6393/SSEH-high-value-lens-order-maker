@@ -29,6 +29,8 @@ eye and pick the diagnosis from the dropdown ("IOP not controlled…", "Hypotony
 text box). No biometry is needed. **Prepare email** attaches the filled form only (the sticker photo is
 not sent). The MRN is taken from the sticker's barcode; only if the barcode can't be read does it use the printed digits (and tells you to check every digit). The name is read from the printed text. The email text for this tab is separate in Settings.
 
+Switching between the Toric lens and Tutoplast tabs carries the patient's MRN, name, eye, VMO surgeon and surgery date across. **Next patient** clears both tabs.
+
 **No patient data is stored.** The photo, OCR text and fields stay in memory only and
 are cleared by "Next patient" or by closing the app. Text recognition runs on the
 phone (Tesseract, served from this app, works offline), so nothing is uploaded

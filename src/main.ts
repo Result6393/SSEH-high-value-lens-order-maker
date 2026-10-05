@@ -9,6 +9,7 @@ import { readPrintout } from './ocr';
 import { DEFAULT_DIAGNOSIS, TEMPLATE_URL, fillOrderForm } from './pdf';
 import { loadSettings, saveSettings } from './settings';
 import { parseRecipients } from './recipients';
+import { NEXT_PATIENT, type PatientDetails } from './patient';
 import { initStickerStep, stickerName } from './sticker-ui';
 import { initTutoplast } from './tutoplast-ui';
 import { shareEmail, type EmailDraft } from './share';
@@ -400,15 +401,47 @@ const template = fetch(TEMPLATE_URL).then((r) => {
   return r.arrayBuffer();
 });
 
-initTutoplast({ settings, template });
+const tutoplast = initTutoplast({ settings, template });
 
-const tabs = { toric: $('tab-toric'), tutoplast: $('tab-tutoplast') };
-for (const [name, panel] of Object.entries(tabs)) {
-  const button = $(`tab-${name}-btn`);
-  button.addEventListener('click', () => {
-    for (const [other, p] of Object.entries(tabs)) {
-      p.hidden = p !== panel;
-      $(`tab-${other}-btn`).setAttribute('aria-selected', String(p === panel));
+function getDetails(): PatientDetails {
+  return { mrn: el.mrn.value.trim(), name: el.name.value.trim(), eye: selectedEye(), vmo: el.vmo.value.trim(), surgeryDate: el.surgeryDate.value };
+}
+
+/** Fills in what the other tab has; blank values leave this tab's own untouched. */
+function setDetails(d: PatientDetails): void {
+  if (d.mrn && d.mrn !== el.mrn.value) {
+    el.mrn.value = d.mrn;
+    stickerMrn = d.mrn;
+    mrnWarnings = {};
+    showMrnWarning();
+  }
+  if (d.name) el.name.value = d.name;
+  if (d.vmo) el.vmo.value = d.vmo;
+  if (d.surgeryDate) el.surgeryDate.value = d.surgeryDate;
+  if (d.eye && d.eye !== selectedEye()) {
+    document.querySelector<HTMLInputElement>(`input[name="eye"][value="${d.eye}"]`)!.checked = true;
+    showLens();
+  } else {
+    refresh();
+  }
+}
+
+
+const tabs = {
+  toric: { panel: $('tab-toric'), get: getDetails, set: setDetails },
+  tutoplast: { panel: $('tab-tutoplast'), get: tutoplast.getDetails, set: tutoplast.setDetails },
+};
+let activeTab: keyof typeof tabs = 'toric';
+for (const name of Object.keys(tabs) as (keyof typeof tabs)[]) {
+  $(`tab-${name}-btn`).addEventListener('click', () => {
+    if (name !== activeTab) {
+      // Same patient on the other tab: carry over what is filled in here.
+      tabs[name].set(tabs[activeTab].get());
+      activeTab = name;
+    }
+    for (const [other, tab] of Object.entries(tabs)) {
+      tab.panel.hidden = other !== name;
+      $(`tab-${other}-btn`).setAttribute('aria-selected', String(other === name));
     }
     window.scrollTo({ top: 0 });
   });
@@ -460,7 +493,8 @@ async function buildDraft(req: RequestData, photo: Blob, more: Blob[]): Promise<
   };
 }
 
-$('reset').addEventListener('click', () => {
+$('reset').addEventListener('click', () => document.dispatchEvent(new Event(NEXT_PATIENT)));
+document.addEventListener(NEXT_PATIENT, () => {
   photoToken++;
   photo = undefined;
   extracted = undefined;
