@@ -2,14 +2,7 @@ import type { Settings } from './types';
 
 const KEY = 'toric-iol-settings';
 
-export const DEFAULT_RECIPIENTS = [
-  'recipient@example.org',
-  'recipient@example.org',
-  'recipient@example.org',
-  'recipient@example.org',
-].join(', ');
-
-const DEFAULTS: Settings = { recipients: DEFAULT_RECIPIENTS, clinicianName: '', contactNumber: '', vmo: '' };
+const DEFAULTS: Settings = { recipients: '', clinicianName: '', contactNumber: '', vmo: '' };
 
 export function loadSettings(): Settings {
   try {

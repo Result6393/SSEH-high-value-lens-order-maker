@@ -6,15 +6,9 @@ export function emailSubject(req: RequestData): string {
   return `Toric IOL request - MRN ${req.mrn} - ${req.eye} eye`;
 }
 
-export function emailBody(req: RequestData, settings: Settings): string {
-  return [
-    'Hi,',
-    '',
-    `Please find attached a high cost lens order form (toric IOL) and biometry for ${req.firstName} ${req.surname.toUpperCase()}, MRN ${req.mrn}, ${req.eye.toUpperCase()} eye.`,
-    '',
-    'Thanks,',
-    settings.clinicianName,
-  ].join('\n').trimEnd();
+export function emailBody(settings: Settings): string {
+  const firstName = settings.clinicianName.replace(/^(dr\.?|doctor)\s+/i, '').split(/\s+/)[0] ?? '';
+  return ['Hi All,', 'Please find a filled toric lens request form and biometry.', 'All the best,', firstName].join('\n').trimEnd();
 }
 
 /** Filesystem-safe base name for the attachments, e.g. "1234567_R". */

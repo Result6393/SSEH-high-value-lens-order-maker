@@ -47,7 +47,7 @@ el.recipients.value = settings.recipients;
 el.clinician.value = settings.clinicianName;
 el.contact.value = settings.contactNumber;
 el.vmo.value = settings.vmo;
-if (!settings.clinicianName) el.settings.hidden = false;
+if (!settings.clinicianName || !settings.recipients) el.settings.hidden = false;
 
 $('settings-btn').addEventListener('click', () => (el.settings.hidden = !el.settings.hidden));
 $('settings-done').addEventListener('click', () => {
@@ -147,7 +147,7 @@ function refresh(): void {
   const problems = req ? validate(req) : [];
   if (!photo) problems.unshift('Take a photo of the biometry.');
   if (!req) problems.unshift('Choose the operative eye.');
-  if (!settings.recipients) problems.push('Add the coordinator emails in Settings.');
+  if (!settings.recipients) problems.push('Add the recipient emails in Settings.');
   if (!settings.clinicianName) problems.push('Add your name in Settings.');
   const warning = req && eligibilityWarning(req);
   el.astWarning.textContent = warning ?? '';
@@ -201,7 +201,7 @@ async function buildDraft(req: RequestData, photo: Blob): Promise<EmailDraft> {
   return {
     to: settings.recipients,
     subject: emailSubject(req),
-    body: emailBody(req, settings),
+    body: emailBody(settings),
     files: [
       new File([new Uint8Array(pdf)], `High_cost_lens_order_toric_${stem}.pdf`, { type: 'application/pdf' }),
       new File([photo], `Biometry_${stem}.jpg`, { type: 'image/jpeg' }),
