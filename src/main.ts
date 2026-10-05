@@ -1,5 +1,5 @@
 import './style.css';
-import { DEFAULT_EMAIL_BODY, TORIC_THRESHOLD_D, attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
+import { DEFAULT_EMAIL_BODY, DEFAULT_TUTOPLAST_EMAIL_BODY, TORIC_THRESHOLD_D, attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
 import { extractBiometry, type Extracted } from './extract';
 import { suggestLenses, type LensSuggestions } from './lens-table';
 import { LensMemory } from './lens-memory';
@@ -9,6 +9,7 @@ import { readPrintout } from './ocr';
 import { DEFAULT_DIAGNOSIS, TEMPLATE_URL, fillOrderForm } from './pdf';
 import { loadSettings, saveSettings } from './settings';
 import { parseRecipients } from './recipients';
+import { initTutoplast } from './tutoplast-ui';
 import { shareEmail, type EmailDraft } from './share';
 import type { Eye, RequestData } from './types';
 
@@ -22,6 +23,7 @@ const el = {
   clinician: input('clinician'),
   contact: input('contact'),
   emailBody: $<HTMLTextAreaElement>('email-body'),
+  tpEmailBody: $<HTMLTextAreaElement>('tp-email-body'),
   camera: input('camera'),
   library: input('library'),
   preview: $<HTMLImageElement>('preview'),
@@ -66,7 +68,7 @@ let photoToken = 0;
 // Version in the header and tab title; the build id (commit) shows in Settings.
 $('version').textContent = `v${__APP_VERSION__}`;
 $('build-info').textContent = `Version ${__APP_VERSION__} (build ${__APP_BUILD__})`;
-document.title = `Toric IOL Request v${__APP_VERSION__}`;
+document.title = `SSEH Orders v${__APP_VERSION__}`;
 
 el.diagnosis.value = DEFAULT_DIAGNOSIS;
 
@@ -75,6 +77,7 @@ el.recipients.value = settings.recipients;
 el.clinician.value = settings.clinicianName;
 el.contact.value = settings.contactNumber;
 el.emailBody.value = settings.emailBody || DEFAULT_EMAIL_BODY;
+el.tpEmailBody.value = settings.tutoplastEmailBody || DEFAULT_TUTOPLAST_EMAIL_BODY;
 el.vmo.value = settings.vmo;
 if (!settings.clinicianName || !parseRecipients(settings.recipients).length) el.settings.hidden = false;
 
@@ -94,12 +97,15 @@ $('settings-done').addEventListener('click', () => {
   // Storing nothing for the stock text lets future improvements to the default reach this user.
   const text = el.emailBody.value.replace(/\r\n?/g, '\n');
   settings.emailBody = text.trim() === DEFAULT_EMAIL_BODY ? '' : text;
+  const tpText = el.tpEmailBody.value.replace(/\r\n?/g, '\n');
+  settings.tutoplastEmailBody = tpText.trim() === DEFAULT_TUTOPLAST_EMAIL_BODY ? '' : tpText;
   saveSettings(settings);
   el.settings.hidden = true;
   refresh();
 });
 
 $('email-reset').addEventListener('click', () => (el.emailBody.value = DEFAULT_EMAIL_BODY));
+$('tp-email-reset').addEventListener('click', () => (el.tpEmailBody.value = DEFAULT_TUTOPLAST_EMAIL_BODY));
 
 for (const picker of [el.extraCamera, el.extraLibrary]) {
   picker.addEventListener('change', () => {
@@ -358,13 +364,27 @@ el.lensPower.addEventListener('change', () => {
 });
 selectPlatform(settings.lensPlatform);
 el.mrn.addEventListener('input', () => (el.mrnWarning.hidden = true));
-document.querySelector('main')!.addEventListener('input', refresh);
+$('tab-toric').addEventListener('input', refresh);
 
 // Fetch the form template up front so the share call stays within the tap's user activation.
 const template = fetch(TEMPLATE_URL).then((r) => {
   if (!r.ok) throw new Error(`order form template missing (${r.status})`);
   return r.arrayBuffer();
 });
+
+initTutoplast({ settings, template });
+
+const tabs = { toric: $('tab-toric'), tutoplast: $('tab-tutoplast') };
+for (const [name, panel] of Object.entries(tabs)) {
+  const button = $(`tab-${name}-btn`);
+  button.addEventListener('click', () => {
+    for (const [other, p] of Object.entries(tabs)) {
+      p.hidden = p !== panel;
+      $(`tab-${other}-btn`).setAttribute('aria-selected', String(p === panel));
+    }
+    window.scrollTo({ top: 0 });
+  });
+}
 
 // The draft built for the last tap, keyed by the request it was built from.
 // If Safari refuses share() because building took too long after the tap, the

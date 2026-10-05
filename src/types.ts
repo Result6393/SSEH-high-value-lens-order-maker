@@ -25,6 +25,24 @@ export interface RequestData {
   surgeryDate: string;
 }
 
+/** A tutoplast order: patient from a sticker, no biometry or lens. Memory only, like RequestData. */
+export interface TutoplastRequest {
+  eye: Eye;
+  surname: string;
+  firstName: string;
+  mrn: string;
+  /** dd/mm/yyyy */
+  dob: string;
+  vmo: string;
+  /** yyyy-mm-dd from <input type="date">, optional. */
+  surgeryDate: string;
+  /** Written in the order form's "Implant/Prosthesis Required" box. */
+  implant: string;
+  company: string;
+  /** Free text for the order form's Diagnosis box. */
+  diagnosis: string;
+}
+
 /** Non-patient preferences, the only thing the app persists. */
 export interface Settings {
   recipients: string;
@@ -36,4 +54,6 @@ export interface Settings {
   lensPlatform: Platform;
   /** Email text; `{name}` becomes the sender's first name. Empty means the default. */
   emailBody: string;
+  /** Same, for tutoplast orders. */
+  tutoplastEmailBody: string;
 }

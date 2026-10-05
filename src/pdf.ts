@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { formatPower } from './lenses';
-import type { RequestData, Settings } from './types';
+import type { Eye, RequestData, Settings, TutoplastRequest } from './types';
 
 export const TEMPLATE_URL = 'forms/toric-lens-order-form.pdf';
 
@@ -36,7 +36,30 @@ const WIDTH = { dateRequested: 74, surgeryDate: 74, mrn: 210, surname: 210, firs
 
 const BLUE = rgb(0, 0.47, 0.83);
 
-export async function fillOrderForm(template: ArrayBuffer | Uint8Array, req: RequestData, settings: Settings, today: Date): Promise<Uint8Array> {
+/** What goes into the form's boxes; the toric and tutoplast orders differ only in these. */
+interface FormContent {
+  mrn: string;
+  surname: string;
+  firstName: string;
+  dob: string;
+  vmo: string;
+  surgeryDate: string;
+  implant: string;
+  company: string;
+  eyeText: string;
+  diagnosis: string;
+  title: string;
+}
+
+export function fillOrderForm(template: ArrayBuffer | Uint8Array, req: RequestData, settings: Settings, today: Date): Promise<Uint8Array> {
+  return fillForm(template, { ...req, implant: `${req.lensModel} ${formatPower(req.lensPower)}`, eyeText: eyeLine(req), title: `High cost lens order - toric - ${req.eye} eye` }, settings, today);
+}
+
+export function fillTutoplastForm(template: ArrayBuffer | Uint8Array, req: TutoplastRequest, settings: Settings, today: Date): Promise<Uint8Array> {
+  return fillForm(template, { ...req, eyeText: eyeLine(req), title: `High cost order - tutoplast - ${req.eye} eye` }, settings, today);
+}
+
+async function fillForm(template: ArrayBuffer | Uint8Array, form: FormContent, settings: Settings, today: Date): Promise<Uint8Array> {
   const doc = await PDFDocument.load(template);
   const page = doc.getPage(0);
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -44,26 +67,26 @@ export async function fillOrderForm(template: ArrayBuffer | Uint8Array, req: Req
   const put = (cell: keyof typeof CELLS, text: string, f: PDFFont = font, size = 11) => draw(page, f, cell, text, size);
 
   put('dateRequested', formatDate(today));
-  if (req.surgeryDate) put('surgeryDate', formatDate(new Date(`${req.surgeryDate}T00:00`)));
-  put('mrn', req.mrn);
-  put('surname', req.surname.toUpperCase());
-  put('firstName', req.firstName);
-  put('dob', req.dob);
-  const age = ageOn(req.dob, today);
+  if (form.surgeryDate) put('surgeryDate', formatDate(new Date(`${form.surgeryDate}T00:00`)));
+  put('mrn', form.mrn);
+  put('surname', form.surname.toUpperCase());
+  put('firstName', form.firstName);
+  put('dob', form.dob);
+  const age = ageOn(form.dob, today);
   if (age !== undefined) put('age', `Age ${age}`);
-  put('vmo', req.vmo);
+  put('vmo', form.vmo);
   put('submittedBy', settings.clinicianName);
   put('contact', settings.contactNumber);
-  put('lens', `${req.lensModel} ${formatPower(req.lensPower)}`, bold, 12);
-  put('company', req.company, font, 12);
-  put('eye', eyeLine(req), bold, 12);
-  drawDiagnosis(page, font, req.diagnosis);
+  put('lens', form.implant, bold, 12);
+  put('company', form.company, font, 12);
+  put('eye', form.eyeText, bold, 12);
+  drawDiagnosis(page, font, form.diagnosis);
 
-  doc.setTitle(`High cost lens order - toric - ${req.eye} eye`);
+  doc.setTitle(form.title);
   return doc.save();
 }
 
-export function eyeLine(req: RequestData): string {
+export function eyeLine(req: { eye: Eye; astK?: string; astAxis?: string }): string {
   const eye = `${req.eye.toUpperCase()} EYE (${req.eye === 'Right' ? 'OD' : 'OS'})`;
   if (!req.astK) return eye;
   return `${eye}   Corneal astigmatism ${req.astK} D${req.astAxis ? ` @ ${req.astAxis}°` : ''}`;

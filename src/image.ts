@@ -47,6 +47,19 @@ export function crop(src: HTMLCanvasElement, x: number, y: number, w: number, h:
   return c;
 }
 
+/** A copy rotated clockwise by `quarterTurns` x 90 degrees (stickers are often photographed sideways). */
+export function rotate(src: HTMLCanvasElement, quarterTurns: number): HTMLCanvasElement {
+  const turns = ((quarterTurns % 4) + 4) % 4;
+  const c = document.createElement('canvas');
+  c.width = turns % 2 ? src.height : src.width;
+  c.height = turns % 2 ? src.width : src.height;
+  const g = c.getContext('2d')!;
+  g.translate(c.width / 2, c.height / 2);
+  g.rotate((turns * Math.PI) / 2);
+  g.drawImage(src, -src.width / 2, -src.height / 2);
+  return c;
+}
+
 /** Scales so the long edge is `edge`; shrinks only, except when called with an edge above the image size. */
 function drawScaled(bitmap: ImageBitmap, edge: number): HTMLCanvasElement {
   const scale = edge / Math.max(bitmap.width, bitmap.height);
