@@ -1,6 +1,6 @@
 {
   "name": "sseh-high-value-lens-order-maker",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Phone web app that prepares toric IOL approval emails from a biometry photo",
   "scripts": {
     "postinstall": "node scripts/copy-ocr-assets.mjs",
@@ -20,6 +20,7 @@
   "homepage": "https://github.com/Result6393/SSEH-high-value-lens-order-maker#readme",
   "dependencies": {
     "@tesseract.js-data/eng": "^1.0.0",
+    "@zxing/library": "^0.21.3",
     "pdf-lib": "^1.17.1",
     "tesseract.js": "^7.0.0"
   },

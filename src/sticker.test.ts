@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { OcrPass } from './ocr-types';
-import { extractSticker, parseName, stickerBand } from './sticker';
+import { extractSticker, mrnFromBarcode, parseName, stickerBand } from './sticker';
 
 /** Builds an OCR pass from lines of text; `¦¦` between words leaves a wide gap (redaction, barcode). */
 function pass(...texts: string[]): OcrPass {
@@ -53,6 +53,20 @@ describe('patient sticker', () => {
   it('repairs a date whose slashes were read as 1s', () => {
     const p = pass('12345678 Sydney Eye Hospital', 'SMITH John', 'DOB: 1410511949 76y Sex: M');
     expect(extractSticker([p]).dob).toBe('14/05/1949');
+  });
+
+  it('reads the MRN printed with dashes', () => {
+    const p = pass('487-28-45 Sydney/Sydney Eye Hospital', 'DIRAN Aram', '1 A Street Moss Vale 2577', 'DOB: 03/11/1962 55y Sex: M');
+    expect(extractSticker([p])).toMatchObject({ mrn: '4872845', surname: 'DIRAN' });
+  });
+
+  it('takes the MRN from the barcode text', () => {
+    expect(mrnFromBarcode('4872845.SYD')).toBe('4872845');
+    expect(mrnFromBarcode(' 487-28-45.syd ')).toBe('4872845');
+    expect(mrnFromBarcode('4872845')).toBe('4872845');
+    expect(mrnFromBarcode('SYD.4872845')).toBe('');
+    expect(mrnFromBarcode('12')).toBe('');
+    expect(mrnFromBarcode(undefined)).toBe('');
   });
 
   it('splits names', () => {

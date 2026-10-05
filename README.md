@@ -27,7 +27,7 @@ For tutoplast orders (same SSEH high cost form, same recipients): photograph the
 (any orientation, even stuck onto a form), check the MRN, name (one field) and date of birth, choose the operative
 eye and pick the diagnosis from the dropdown ("IOP not controlled…", "Hypotony…", or **Other** with a
 text box). No biometry is needed. **Prepare email** attaches the filled form only (the sticker photo is
-not sent). The email text for this tab is separate in Settings.
+not sent). The MRN is taken from the sticker's barcode when it can be read (otherwise from the printed number). The email text for this tab is separate in Settings.
 
 **No patient data is stored.** The photo, OCR text and fields stay in memory only and
 are cleared by "Next patient" or by closing the app. Text recognition runs on the
