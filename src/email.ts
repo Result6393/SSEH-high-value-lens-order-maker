@@ -82,11 +82,10 @@ export function attachmentStem(req: Pick<RequestData, 'mrn' | 'eye'>): string {
 }
 
 /** The patient checks both order types share. */
-export function validatePatient(req: Pick<RequestData, 'name' | 'mrn' | 'dob'>): string[] {
+export function validatePatient(req: Pick<RequestData, 'name' | 'mrn'>): string[] {
   const problems: string[] = [];
   if (!req.name.trim()) problems.push('Name is missing.');
   if (!req.mrn.trim()) problems.push('MRN is missing.');
-  if (req.dob && !/^\d{2}\/\d{2}\/\d{4}$/.test(req.dob)) problems.push('Date of birth should be dd/mm/yyyy.');
   return problems;
 }
 

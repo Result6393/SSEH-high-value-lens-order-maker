@@ -21,8 +21,6 @@ const CELLS = {
   surgeryDate: [347, 262, 301],
   mrn: [508, 183, 222],
   name: [508, 222, 262],
-  dob: [506, 301, 325],
-  age: [600, 301, 325],
   vmo: [252, 406, 447],
   submittedBy: [258, 447, 478],
   contact: [622, 447, 478],
@@ -31,7 +29,7 @@ const CELLS = {
   eye: [252, 569, 599],
 } as const satisfies Record<string, readonly [number, number, number]>;
 // Max text width per cell, same pixel units.
-const WIDTH = { dateRequested: 74, surgeryDate: 74, mrn: 210, name: 210, dob: 86, age: 118, vmo: 155, submittedBy: 150, contact: 100, lens: 450, company: 450, eye: 470 };
+const WIDTH = { dateRequested: 74, surgeryDate: 74, mrn: 210, name: 210, vmo: 155, submittedBy: 150, contact: 100, lens: 450, company: 450, eye: 470 };
 
 const BLUE = rgb(0, 0.47, 0.83);
 
@@ -39,7 +37,6 @@ const BLUE = rgb(0, 0.47, 0.83);
 interface FormContent {
   mrn: string;
   name: string;
-  dob: string;
   vmo: string;
   surgeryDate: string;
   implant: string;
@@ -68,9 +65,6 @@ async function fillForm(template: ArrayBuffer | Uint8Array, form: FormContent, s
   if (form.surgeryDate) put('surgeryDate', formatDate(new Date(`${form.surgeryDate}T00:00`)));
   put('mrn', form.mrn);
   put('name', form.name); // one field for the whole name; it goes in the Surname box
-  put('dob', form.dob);
-  const age = ageOn(form.dob, today);
-  if (age !== undefined) put('age', `Age ${age}`);
   put('vmo', form.vmo);
   put('submittedBy', settings.clinicianName);
   put('contact', settings.contactNumber);
@@ -145,13 +139,4 @@ function drawDiagnosis(page: PDFPage, font: PDFFont, text: string): void {
 
 function formatDate(d: Date): string {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-}
-
-export function ageOn(dob: string, today: Date): number | undefined {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dob);
-  if (!m) return undefined;
-  const [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  let age = today.getFullYear() - y;
-  if (today.getMonth() + 1 < mo || (today.getMonth() + 1 === mo && today.getDate() < d)) age--;
-  return age >= 0 && age < 130 ? age : undefined;
 }

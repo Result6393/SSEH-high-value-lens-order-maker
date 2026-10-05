@@ -22,9 +22,7 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     preview: $<HTMLImageElement>('tp-preview'),
     ocrStatus: $('tp-ocr-status'),
     mrn: input('tp-mrn'),
-    mrnWarning: $('tp-mrn-warning'),
     name: input('tp-name'),
-    dob: input('tp-dob'),
     vmo: input('tp-vmo'),
     surgeryDate: input('tp-surgery-date'),
     diagnosis: $<HTMLSelectElement>('tp-diagnosis'),
@@ -59,7 +57,6 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
       eye,
       mrn: el.mrn.value.trim(),
       name: el.name.value.trim(),
-      dob: el.dob.value.trim(),
       vmo: el.vmo.value.trim(),
       surgeryDate: el.surgeryDate.value,
       implant: el.implant.value.trim(),
@@ -78,7 +75,6 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     el.problems.replaceChildren(...problems.map((p) => Object.assign(document.createElement('li'), { textContent: p })));
     el.send.disabled = problems.length > 0;
   }
-  el.mrn.addEventListener('input', () => (el.mrnWarning.hidden = true));
   $('tab-tutoplast').addEventListener('input', refresh);
   $('tab-tutoplast').addEventListener('change', refresh);
   // Settings (recipients, name) can change while this tab is open.
@@ -110,14 +106,9 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
       const sticker = await readSticker(ocr, (stage) => mine === token && setStatus(stage));
       if (mine !== token) return;
       el.mrn.value = sticker.mrn;
-      el.mrnWarning.hidden = !sticker.mrnConflict;
       el.name.value = joinName(sticker.surname, sticker.firstName);
-      el.dob.value = sticker.dob;
-      const missing = [!sticker.mrn && 'MRN', !sticker.surname && 'name', !sticker.dob && 'date of birth'].filter(Boolean);
-      setStatus(
-        (missing.length ? `Couldn't read the ${missing.join(', ')}. Fill it in by hand.` : 'Details read. Check them against the sticker.') +
-          (sticker.mrnFromBarcode ? ' MRN from the barcode.' : ''),
-      );
+      const missing = [!sticker.mrn && 'MRN barcode', !sticker.surname && 'name'].filter(Boolean);
+      setStatus(missing.length ? `Couldn't read the ${missing.join(' or the ')}. Fill it in by hand.` : 'MRN from the barcode. Check the name against the sticker.');
     } catch (e) {
       setStatus(`Problem reading the photo: ${(e as Error).message}`);
     }
@@ -165,9 +156,8 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     photoUrl = undefined;
     el.preview.removeAttribute('src');
     el.preview.hidden = true;
-    for (const i of [el.mrn, el.name, el.dob, el.surgeryDate]) i.value = '';
+    for (const i of [el.mrn, el.name, el.surgeryDate]) i.value = '';
     el.diagnosis.value = '';
-    el.mrnWarning.hidden = true;
     el.other.value = ''; // free text may name the patient, so it is never saved
     el.implant.value = DEFAULT_IMPLANT;
     el.company.value = DEFAULT_COMPANY;

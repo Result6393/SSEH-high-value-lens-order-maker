@@ -6,10 +6,8 @@ import { decodeBarcode } from './barcode';
 import { extractSticker, mrnFromBarcode, stickerBand, type Sticker } from './sticker';
 
 export interface StickerRead extends Sticker {
-  /** The MRN came from the barcode. */
-  mrnFromBarcode: boolean;
-  /** The barcode and the printed number were both read and differ. */
-  mrnConflict: boolean;
+  /** From the barcode only; empty when no barcode could be read. */
+  mrn: string;
 }
 
 export interface PrintoutRead {
@@ -81,16 +79,17 @@ export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage:
 }
 
 /**
- * Reads a patient sticker: the whole photo, then a tight crop of the sticker for a
- * cleaner read. If that doesn't find both MRN and name, the photo is tried turned a
+ * Reads a patient sticker: the MRN from its barcode (never from the printed digits), the
+ * name from the text: the whole photo, then a tight crop of the sticker for a
+ * cleaner read. If that doesn't find the name, the photo is tried turned a
  * quarter either way (stickers are often photographed sideways), keeping the best read.
  */
 export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<StickerRead> {
   const w = await getWorker();
   await w.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: '' });
-  let best: Sticker = { mrn: '', surname: '', firstName: '', dob: '' };
+  let best: Sticker = { surname: '', firstName: '' };
   let barcodeMrn = '';
-  const score = (s: Sticker) => Number(!!s.mrn) + Number(!!s.surname) + Number(!!s.dob) / 2;
+  const score = (s: Sticker) => Number(!!s.surname) + Number(!!s.firstName) / 2;
   for (const turns of [0, 1, 3]) {
     const img = turns ? rotate(image, turns) : image;
     const label = turns ? ' (turned)' : '';
@@ -106,10 +105,9 @@ export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: 
     }
     const sticker = extractSticker(passes);
     if (score(sticker) > score(best)) best = sticker;
-    if ((best.mrn || barcodeMrn) && best.surname) break;
+    if (best.surname) break;
   }
-  // The barcode is the reliable source for the MRN; a differing printed number is flagged.
-  return { ...best, mrn: barcodeMrn || best.mrn, mrnFromBarcode: !!barcodeMrn, mrnConflict: !!barcodeMrn && !!best.mrn && barcodeMrn !== best.mrn };
+  return { ...best, mrn: barcodeMrn };
 }
 
 const linesOf = (page: Page): Line[] => (page.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines));

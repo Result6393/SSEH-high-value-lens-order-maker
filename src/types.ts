@@ -8,8 +8,6 @@ export interface RequestData {
   /** The patient's name as one line, e.g. "SMITH, John". The coordinators match it by hand. */
   name: string;
   mrn: string;
-  /** dd/mm/yyyy */
-  dob: string;
   /** Corneal astigmatism (IOLMaster "Ast. K") of the operative eye, dioptres. */
   astK: string;
   astAxis: string;
@@ -30,8 +28,6 @@ export interface TutoplastRequest {
   eye: Eye;
   name: string;
   mrn: string;
-  /** dd/mm/yyyy */
-  dob: string;
   vmo: string;
   /** yyyy-mm-dd from <input type="date">, optional. */
   surgeryDate: string;

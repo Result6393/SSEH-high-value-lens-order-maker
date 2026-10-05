@@ -35,7 +35,6 @@ const el = {
   mrn: input('mrn'),
   mrnWarning: $('mrn-warning'),
   name: input('name'),
-  dob: input('dob'),
   astK: input('astk'),
   axis: input('axis'),
   vmo: input('vmo'),
@@ -53,7 +52,7 @@ const el = {
   send: $<HTMLButtonElement>('send'),
   sendStatus: $('send-status'),
 };
-const patientInputs = [el.mrn, el.name, el.dob, el.astK, el.axis, el.surgeryDate, el.lensPower, el.lensModelOther, el.company];
+const patientInputs = [el.mrn, el.name, el.astK, el.axis, el.surgeryDate, el.lensPower, el.lensModelOther, el.company];
 
 // Patient state lives only in these variables and the form fields.
 let photo: Blob | undefined;
@@ -189,14 +188,12 @@ async function onPhoto(file: File): Promise<void> {
     }
     el.mrn.value = extracted.mrn;
     el.name.value = joinName(extracted.surname, extracted.firstName);
-    el.dob.value = extracted.dob;
     el.mrnWarning.hidden = !extracted.mrnUncertain;
     fillAstK();
     showLens();
     const missing = [
       !extracted.mrn && 'MRN',
       !extracted.surname && 'name',
-      !extracted.dob && 'date of birth',
     ].filter(Boolean);
     setOcrStatus(
       missing.length
@@ -308,7 +305,6 @@ function currentRequest(): RequestData | undefined {
     eye,
     mrn: el.mrn.value.trim(),
     name: el.name.value.trim(),
-    dob: el.dob.value.trim(),
     astK: el.astK.value.trim(),
     astAxis: el.axis.value.trim(),
     vmo: el.vmo.value.trim(),

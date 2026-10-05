@@ -3,7 +3,7 @@ import { attachmentStem, eligibilityWarning, emailBody, emailSubject, joinName, 
 import type { RequestData, Settings } from './types';
 
 const req: RequestData = {
-  eye: 'Right', name: 'CITIZEN, Jane', mrn: '1234567', dob: '01/02/1950',
+  eye: 'Right', name: 'CITIZEN, Jane', mrn: '1234567',
   astK: '2.39', astAxis: '60', vmo: '', surgeryDate: '', lensModel: 'ZCU300', lensPower: '22', company: 'J&J', diagnosis: 'High cyl / astigmatism >2',
 };
 const settings: Settings = { recipients: '', clinicianName: 'Thomas Desmond', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '' };
@@ -35,7 +35,6 @@ describe('email', () => {
     expect(validate(req)).toEqual([]);
     expect(validate({ ...req, astK: '' })).toEqual([]);
     expect(validate({ ...req, name: ' ', astK: 'abc' })).toHaveLength(2);
-    expect(validate({ ...req, dob: '1/2/50' })).toHaveLength(1);
     expect(validate({ ...req, lensModel: '', lensPower: 'abc' })).toHaveLength(2);
     for (const ok of ['16', '+16', '16.0', '16D', '+16.0D', '16,5', ' 16 d ']) expect(validate({ ...req, lensPower: ok })).toEqual([]);
     expect(validate({ ...req, lensPower: '1600' })).toHaveLength(1);

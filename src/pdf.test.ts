@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { PDFDocument } from 'pdf-lib';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_DIAGNOSIS, ageOn, eyeLine, fillOrderForm, fillTutoplastForm, wrapLines } from './pdf';
+import { DEFAULT_DIAGNOSIS, eyeLine, fillOrderForm, fillTutoplastForm, wrapLines } from './pdf';
 import { TUTOPLAST_DIAGNOSES } from './tutoplast';
 import type { RequestData } from './types';
 
 const req: RequestData = {
-  eye: 'Left', name: 'CITIZEN, Jane', mrn: '7654321', dob: '01/02/1950',
+  eye: 'Left', name: 'CITIZEN, Jane', mrn: '7654321',
   astK: '2.39', astAxis: '60', vmo: 'Dr Surgeon', surgeryDate: '2026-11-03', lensModel: 'CNA0T2', lensPower: '20.5', company: 'Alcon', diagnosis: 'High cyl / astigmatism >2',
 };
 
@@ -42,7 +42,7 @@ describe('order form', () => {
   it('fills the tutoplast order on the same form', async () => {
     const template = readFileSync(new URL('../public/forms/toric-lens-order-form.pdf', import.meta.url));
     const settings = { recipients: '', clinicianName: 'Dr Test', contactNumber: '', vmo: '', lensPlatform: 'ZCU' as const, emailBody: '', tutoplastEmailBody: '' };
-    const order = { eye: 'Right' as const, name: 'CITIZEN, Jane', mrn: '7654321', dob: '01/02/1950', vmo: 'Dr Surgeon', surgeryDate: '', implant: 'Tutoplast', company: 'Tutogen' };
+    const order = { eye: 'Right' as const, name: 'CITIZEN, Jane', mrn: '7654321', vmo: 'Dr Surgeon', surgeryDate: '', implant: 'Tutoplast', company: 'Tutogen' };
     for (const diagnosis of [...TUTOPLAST_DIAGNOSES, 'x '.repeat(300)]) {
       const out = await fillTutoplastForm(template, { ...order, diagnosis }, settings, new Date(2026, 9, 5));
       const doc = await PDFDocument.load(out);
@@ -63,11 +63,5 @@ describe('order form', () => {
   it('states the operative eye and astigmatism', () => {
     expect(eyeLine(req)).toBe('LEFT EYE (OS)   Corneal astigmatism 2.39 D @ 60°');
     expect(eyeLine({ ...req, eye: 'Right', astK: '' })).toBe('RIGHT EYE (OD)');
-  });
-
-  it('computes age from dd/mm/yyyy', () => {
-    expect(ageOn('06/10/1950', new Date(2026, 9, 5))).toBe(75);
-    expect(ageOn('05/10/1950', new Date(2026, 9, 5))).toBe(76);
-    expect(ageOn('bad', new Date())).toBeUndefined();
   });
 });
