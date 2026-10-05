@@ -5,8 +5,8 @@ export type Eye = 'Right' | 'Left';
 /** Everything about one request. Lives in memory only and is discarded on reset. */
 export interface RequestData {
   eye: Eye;
-  surname: string;
-  firstName: string;
+  /** The patient's name as one line, e.g. "SMITH, John". The coordinators match it by hand. */
+  name: string;
   mrn: string;
   /** dd/mm/yyyy */
   dob: string;
@@ -28,8 +28,7 @@ export interface RequestData {
 /** A tutoplast order: patient from a sticker, no biometry or lens. Memory only, like RequestData. */
 export interface TutoplastRequest {
   eye: Eye;
-  surname: string;
-  firstName: string;
+  name: string;
   mrn: string;
   /** dd/mm/yyyy */
   dob: string;

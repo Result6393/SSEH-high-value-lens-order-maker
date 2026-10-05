@@ -6,7 +6,7 @@ import { TUTOPLAST_DIAGNOSES } from './tutoplast';
 import type { RequestData } from './types';
 
 const req: RequestData = {
-  eye: 'Left', surname: 'Citizen', firstName: 'Jane', mrn: '7654321', dob: '01/02/1950',
+  eye: 'Left', name: 'CITIZEN, Jane', mrn: '7654321', dob: '01/02/1950',
   astK: '2.39', astAxis: '60', vmo: 'Dr Surgeon', surgeryDate: '2026-11-03', lensModel: 'CNA0T2', lensPower: '20.5', company: 'Alcon', diagnosis: 'High cyl / astigmatism >2',
 };
 
@@ -42,7 +42,7 @@ describe('order form', () => {
   it('fills the tutoplast order on the same form', async () => {
     const template = readFileSync(new URL('../public/forms/toric-lens-order-form.pdf', import.meta.url));
     const settings = { recipients: '', clinicianName: 'Dr Test', contactNumber: '', vmo: '', lensPlatform: 'ZCU' as const, emailBody: '', tutoplastEmailBody: '' };
-    const order = { eye: 'Right' as const, surname: 'Citizen', firstName: 'Jane', mrn: '7654321', dob: '01/02/1950', vmo: 'Dr Surgeon', surgeryDate: '', implant: 'Tutoplast', company: 'Tutogen' };
+    const order = { eye: 'Right' as const, name: 'CITIZEN, Jane', mrn: '7654321', dob: '01/02/1950', vmo: 'Dr Surgeon', surgeryDate: '', implant: 'Tutoplast', company: 'Tutogen' };
     for (const diagnosis of [...TUTOPLAST_DIAGNOSES, 'x '.repeat(300)]) {
       const out = await fillTutoplastForm(template, { ...order, diagnosis }, settings, new Date(2026, 9, 5));
       const doc = await PDFDocument.load(out);

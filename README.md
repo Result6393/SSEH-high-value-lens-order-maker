@@ -24,7 +24,7 @@ The email text can be changed in Settings; `{patient}`, `{mrn}`, `{lens}` and `{
 ## Tutoplast tab
 
 For tutoplast orders (same SSEH high cost form, same recipients): photograph the patient sticker
-(any orientation, even stuck onto a form), check the MRN, name and date of birth, choose the operative
+(any orientation, even stuck onto a form), check the MRN, name (one field) and date of birth, choose the operative
 eye and pick the diagnosis from the dropdown ("IOP not controlled…", "Hypotony…", or **Other** with a
 text box). No biometry is needed. **Prepare email** attaches the filled form only (the sticker photo is
 not sent). The email text for this tab is separate in Settings.

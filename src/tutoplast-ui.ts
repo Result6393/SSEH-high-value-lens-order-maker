@@ -1,7 +1,7 @@
 // The Tutoplast tab: patient sticker photo -> name/MRN -> order form + email.
 // Like the toric tab, patient data lives only in these variables and the form fields.
 
-import { attachmentStem, tutoplastBody, tutoplastSubject } from './email';
+import { attachmentStem, joinName, tutoplastBody, tutoplastSubject } from './email';
 import { prepareImage } from './image';
 import { readSticker } from './ocr';
 import { fillTutoplastForm } from './pdf';
@@ -22,8 +22,7 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     preview: $<HTMLImageElement>('tp-preview'),
     ocrStatus: $('tp-ocr-status'),
     mrn: input('tp-mrn'),
-    surname: input('tp-surname'),
-    firstName: input('tp-first-name'),
+    name: input('tp-name'),
     dob: input('tp-dob'),
     vmo: input('tp-vmo'),
     surgeryDate: input('tp-surgery-date'),
@@ -58,8 +57,7 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     return {
       eye,
       mrn: el.mrn.value.trim(),
-      surname: el.surname.value.trim(),
-      firstName: el.firstName.value.trim(),
+      name: el.name.value.trim(),
       dob: el.dob.value.trim(),
       vmo: el.vmo.value.trim(),
       surgeryDate: el.surgeryDate.value,
@@ -110,10 +108,9 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
       const sticker = await readSticker(ocr, (stage) => mine === token && setStatus(stage));
       if (mine !== token) return;
       el.mrn.value = sticker.mrn;
-      el.surname.value = sticker.surname;
-      el.firstName.value = sticker.firstName;
+      el.name.value = joinName(sticker.surname, sticker.firstName);
       el.dob.value = sticker.dob;
-      const missing = [!sticker.mrn && 'MRN', !sticker.surname && 'name', !sticker.firstName && 'first name', !sticker.dob && 'date of birth'].filter(Boolean);
+      const missing = [!sticker.mrn && 'MRN', !sticker.surname && 'name', !sticker.dob && 'date of birth'].filter(Boolean);
       setStatus(missing.length ? `Couldn't read the ${missing.join(', ')}. Fill it in by hand.` : 'Details read. Check them against the sticker.');
     } catch (e) {
       setStatus(`Problem reading the photo: ${(e as Error).message}`);
@@ -162,7 +159,7 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     photoUrl = undefined;
     el.preview.removeAttribute('src');
     el.preview.hidden = true;
-    for (const i of [el.mrn, el.surname, el.firstName, el.dob, el.surgeryDate]) i.value = '';
+    for (const i of [el.mrn, el.name, el.dob, el.surgeryDate]) i.value = '';
     el.diagnosis.value = '';
     el.other.value = ''; // free text may name the patient, so it is never saved
     el.implant.value = DEFAULT_IMPLANT;
