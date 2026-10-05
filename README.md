@@ -10,15 +10,19 @@ toric IOL approval email for the lens coordinators:
 3. Pick the lens: Tecnis ZCU (default) or Clareon. The power is read from that
    lens's table for the chosen eye; on a Barrett Toric page the recommended toric
    model (e.g. ZCU300, CNA0T5) is filled in too, otherwise pick it.
-4. Tap **Prepare email**: the SSEH high cost lens order form (filled in) and the
-   photo go to the phone's share sheet. Choose Outlook, paste your recipients
+4. Optionally add more images ("Take another" / "Add images") to attach as well.
+5. Tap **Prepare email**: the SSEH high cost lens order form (filled in), the
+   biometry photo and any extra images go to the phone's share sheet. Choose Outlook, paste your recipients
    (already copied) into To, then send.
+
+Lens powers can be typed any way ("16", "+16", "16.0D"); they are written as "+16.0D".
+The email text can be changed in Settings; `{name}` is replaced by your first name.
 
 **No patient data is stored.** The photo, OCR text and fields stay in memory only and
 are cleared by "Next patient" or by closing the app. Text recognition runs on the
 phone (Tesseract, served from this app, works offline), so nothing is uploaded
 anywhere except the email you send yourself. Only your recipient list,
-your name, contact number and last VMO surgeon are saved, in the browser's local storage.
+your name, contact number, last VMO surgeon and email text are saved, in the browser's local storage.
 
 ## Development
 

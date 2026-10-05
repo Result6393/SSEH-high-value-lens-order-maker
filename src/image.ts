@@ -12,10 +12,21 @@ export async function prepareImage(file: File): Promise<{ ocr: HTMLCanvasElement
   const ocr = drawScaled(bitmap, OCR_MAX_EDGE);
   bitmap.close();
   grayscaleContrast(ocr);
-  const jpeg = await new Promise<Blob>((resolve, reject) =>
-    attachment.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode photo'))), 'image/jpeg', 0.85),
+  return { ocr, jpeg: await toJpeg(attachment) };
+}
+
+/** An extra image for the email: rotated, downscaled and stripped of EXIF/GPS like the biometry photo. */
+export async function prepareAttachment(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const canvas = drawScaled(bitmap, ATTACHMENT_MAX_EDGE);
+  bitmap.close();
+  return toJpeg(canvas);
+}
+
+function toJpeg(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode photo'))), 'image/jpeg', 0.85),
   );
-  return { ocr, jpeg };
 }
 
 export function crop(src: HTMLCanvasElement, x: number, y: number, w: number, h: number, scale = 1): HTMLCanvasElement {

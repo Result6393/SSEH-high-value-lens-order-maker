@@ -51,7 +51,12 @@
       <label>Contact number
         <input id="contact" type="tel" autocomplete="tel" />
       </label>
-      <button id="settings-done" type="button">Done</button>
+      <label>Email text
+        <textarea id="email-body" rows="8" autocomplete="off" spellcheck="true"></textarea>
+      </label>
+      <p class="hint">Blank lines are kept. <code>{name}</code> is replaced with your first name.</p>
+      <button id="email-reset" type="button">Reset email text to default</button>
+      <button id="settings-done" class="primary" type="button">Done</button>
     </section>
 
     <section id="step-photo">
@@ -66,6 +71,19 @@
       </div>
       <img id="preview" alt="Biometry photo" hidden />
       <p id="ocr-status" class="hint" hidden></p>
+
+      <h3>More images (optional)</h3>
+      <p class="hint">Added to the email as extra attachments.</p>
+      <div class="row">
+        <label class="button">Take another
+          <input id="extra-camera" type="file" accept="image/*" capture="environment" hidden />
+        </label>
+        <label class="button">Add images
+          <input id="extra-library" type="file" accept="image/*" multiple hidden />
+        </label>
+      </div>
+      <ul id="extras" class="thumbs"></ul>
+      <p id="extras-status" class="hint" hidden></p>
     </section>
 
     <section id="step-details">
@@ -101,7 +119,7 @@
           <select id="lens-model"></select>
           <input id="lens-model-other" type="text" autocomplete="off" autocapitalize="characters" hidden />
         </label>
-        <label>Power (D) <input id="lens-power" type="text" inputmode="decimal" autocomplete="off" /></label>
+        <label>Power (D) <input id="lens-power" type="text" inputmode="decimal" autocomplete="off" placeholder="+16.0D" /></label>
       </div>
       <label id="company-wrap" hidden>Company <input id="company" type="text" autocomplete="off" /></label>
       <p id="lens-hint" class="hint" hidden></p>

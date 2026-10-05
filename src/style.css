@@ -54,3 +54,10 @@ textarea { font-family: inherit; font-size: 0.9rem; resize: vertical; }
 fieldset.seg label { padding: 12px 4px; font-size: 0.95rem; }
 select { appearance: none; }
 .problems { margin-bottom: 12px; }
+h3 { font-size: 0.95rem; margin: 20px 0 0; }
+code { background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+.thumbs { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.thumbs:empty { display: none; }
+.thumbs li { position: relative; }
+.thumbs img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
+.thumbs button { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; margin: 0; padding: 0; border-radius: 50%; line-height: 1; font-size: 1.1rem; background: rgba(0, 0, 0, 0.65); color: #fff; border: none; }

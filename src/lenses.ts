@@ -25,11 +25,28 @@ export const FAMILIES: Record<Exclude<Platform, 'Other'>, LensFamily> = {
   },
 };
 
-/** "+22.0D" style, as written on orders. */
-export function formatPower(power: string): string {
-  const n = Number(power);
-  if (!power.trim() || Number.isNaN(n)) return power.trim();
-  return `${n >= 0 ? '+' : '-'}${Math.abs(n).toFixed(1)}D`;
+/**
+ * Reads a lens power typed any reasonable way: "16", "+16", "16.0", "16D",
+ * "+16.0 D", "16,5". Returns undefined if it isn't a power.
+ */
+export function parsePower(text: string): number | undefined {
+  const m = /^\s*([+-]?)\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*D?\s*$/i.exec(text);
+  if (!m) return undefined;
+  const n = Number(m[2].replace(',', '.'));
+  return m[1] === '-' ? -n : n;
+}
+
+/**
+ * The way powers are written on orders: always a sign, one decimal place and a
+ * D, e.g. "+16.0D". Powers not on a 0.1 D step keep two decimals ("+16.25D")
+ * rather than being silently rounded. Unparseable text is returned unchanged.
+ */
+export function formatPower(text: string): string {
+  const n = parsePower(text);
+  if (n === undefined) return text.trim();
+  const tenths = Math.abs(n) * 10;
+  const digits = Math.abs(tenths - Math.round(tenths)) < 1e-9 ? 1 : 2;
+  return `${n >= 0 ? '+' : '-'}${Math.abs(n).toFixed(digits)}D`;
 }
 
 /** Powers come in 0.5 D steps (ties go to the higher, more myopic power). */

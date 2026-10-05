@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { findLensTables, pickCylinder, pickPower, suggestLenses, type TableText } from './lens-table';
-import { formatPower, inferEye, modelForCylinder, roundToHalf } from './lenses';
+import { formatPower, inferEye, modelForCylinder, parsePower, roundToHalf } from './lenses';
 import type { OcrPass } from './ocr-types';
 
 describe('pickPower', () => {
@@ -125,6 +125,17 @@ describe('lens helpers', () => {
   it('formats and rounds powers', () => {
     expect(formatPower('22')).toBe('+22.0D');
     expect(formatPower('21.5')).toBe('+21.5D');
+    expect(formatPower('16')).toBe('+16.0D');
+    expect(formatPower('+16.0D')).toBe('+16.0D');
+    expect(formatPower(' 16 d')).toBe('+16.0D');
+    expect(formatPower('16,5')).toBe('+16.5D');
+    expect(formatPower('-1.5')).toBe('-1.5D');
+    expect(formatPower('0')).toBe('+0.0D');
+    expect(formatPower('16.25')).toBe('+16.25D'); // not silently rounded
+    expect(formatPower('abc')).toBe('abc');
+    expect(formatPower('')).toBe('');
+    expect(parsePower('+16.0D')).toBe(16);
+    expect(parsePower('16.5.5')).toBeUndefined();
     expect(roundToHalf(21.98)).toBe(22);
     expect(roundToHalf(21.25)).toBe(21.5);
     expect(roundToHalf(21.07)).toBe(21);

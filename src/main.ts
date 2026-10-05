@@ -1,9 +1,9 @@
 import './style.css';
-import { TORIC_THRESHOLD_D, attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
+import { DEFAULT_EMAIL_BODY, TORIC_THRESHOLD_D, attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
 import { extractBiometry, type Extracted } from './extract';
 import { suggestLenses, type LensSuggestions } from './lens-table';
 import { FAMILIES, formatPower, inferEye, modelForCylinder, type Platform } from './lenses';
-import { prepareImage } from './image';
+import { prepareAttachment, prepareImage } from './image';
 import { readPrintout } from './ocr';
 import { TEMPLATE_URL, fillOrderForm } from './pdf';
 import { loadSettings, saveSettings } from './settings';
@@ -18,9 +18,14 @@ const el = {
   recipients: $<HTMLTextAreaElement>('recipients'),
   clinician: input('clinician'),
   contact: input('contact'),
+  emailBody: $<HTMLTextAreaElement>('email-body'),
   camera: input('camera'),
   library: input('library'),
   preview: $<HTMLImageElement>('preview'),
+  extraCamera: input('extra-camera'),
+  extraLibrary: input('extra-library'),
+  extras: $<HTMLUListElement>('extras'),
+  extrasStatus: $('extras-status'),
   ocrStatus: $('ocr-status'),
   mrn: input('mrn'),
   mrnWarning: $('mrn-warning'),
@@ -47,6 +52,7 @@ const patientInputs = [el.mrn, el.surname, el.firstName, el.dob, el.astK, el.axi
 
 // Patient state lives only in these variables and the form fields.
 let photo: Blob | undefined;
+let extras: { blob: Blob; url: string }[] = [];
 let previewUrl: string | undefined;
 let extracted: Extracted | undefined;
 let lensSuggestions: LensSuggestions | undefined;
@@ -56,6 +62,7 @@ const settings = loadSettings();
 el.recipients.value = settings.recipients;
 el.clinician.value = settings.clinicianName;
 el.contact.value = settings.contactNumber;
+el.emailBody.value = settings.emailBody || DEFAULT_EMAIL_BODY;
 el.vmo.value = settings.vmo;
 if (!settings.clinicianName || !settings.recipients) el.settings.hidden = false;
 
@@ -64,10 +71,61 @@ $('settings-done').addEventListener('click', () => {
   settings.recipients = el.recipients.value.trim();
   settings.clinicianName = el.clinician.value.trim();
   settings.contactNumber = el.contact.value.trim();
+  // Storing nothing for the stock text lets future improvements to the default reach this user.
+  const text = el.emailBody.value.replace(/\r\n?/g, '\n');
+  settings.emailBody = text.trim() === DEFAULT_EMAIL_BODY ? '' : text;
   saveSettings(settings);
   el.settings.hidden = true;
   refresh();
 });
+
+$('email-reset').addEventListener('click', () => (el.emailBody.value = DEFAULT_EMAIL_BODY));
+
+for (const picker of [el.extraCamera, el.extraLibrary]) {
+  picker.addEventListener('change', () => {
+    const files = [...(picker.files ?? [])];
+    picker.value = '';
+    if (files.length) void addExtras(files);
+  });
+}
+
+async function addExtras(files: File[]): Promise<void> {
+  const failed: string[] = [];
+  for (const file of files) {
+    try {
+      const blob = await prepareAttachment(file);
+      extras.push({ blob, url: URL.createObjectURL(blob) });
+    } catch {
+      failed.push(file.name || 'an image');
+    }
+  }
+  el.extrasStatus.hidden = !failed.length;
+  el.extrasStatus.textContent = failed.length ? `Couldn't read ${failed.join(', ')}.` : '';
+  prepared = undefined;
+  renderExtras();
+}
+
+function renderExtras(): void {
+  el.extras.replaceChildren(
+    ...extras.map((x, i) => {
+      const li = document.createElement('li');
+      const img = Object.assign(document.createElement('img'), { src: x.url, alt: `Extra image ${i + 1}` });
+      const remove = Object.assign(document.createElement('button'), {
+        type: 'button',
+        textContent: '×',
+        ariaLabel: `Remove extra image ${i + 1}`,
+      });
+      remove.addEventListener('click', () => {
+        URL.revokeObjectURL(x.url);
+        extras = extras.filter((e) => e !== x);
+        prepared = undefined;
+        renderExtras();
+      });
+      li.append(img, remove);
+      return li;
+    }),
+  );
+}
 
 for (const picker of [el.camera, el.library]) {
   picker.addEventListener('change', () => {
@@ -164,7 +222,7 @@ function fillLensPower(): void {
   el.lensHint.hidden = true;
   if (!eye || !lensSuggestions || platform === 'Other') return refresh();
   const pick = lensSuggestions[eye]?.[platform];
-  el.lensPower.value = pick ? String(pick.power) : '';
+  el.lensPower.value = pick ? formatPower(String(pick.power)) : '';
   const model = pick?.cyl !== undefined ? modelForCylinder(platform, pick.cyl) : undefined;
   if (model) el.lensModel.value = model;
   el.lensHint.hidden = false;
@@ -235,6 +293,8 @@ document.querySelectorAll<HTMLInputElement>('input[name="platform"]').forEach((r
 );
 el.lensModel.addEventListener('change', refresh);
 el.lensPower.addEventListener('input', () => (el.lensWarning.hidden = true));
+// Typing "16" becomes "+16.0D" when leaving the field.
+el.lensPower.addEventListener('change', () => (el.lensPower.value = formatPower(el.lensPower.value)));
 selectPlatform(settings.lensPlatform);
 el.mrn.addEventListener('input', () => (el.mrnWarning.hidden = true));
 document.querySelector('main')!.addEventListener('input', refresh);
@@ -254,11 +314,13 @@ el.send.addEventListener('click', async () => {
   const req = currentRequest();
   if (!req || !photo) return;
   el.sendStatus.textContent = '';
+  el.lensPower.value = formatPower(el.lensPower.value);
+  req.lensPower = el.lensPower.value;
   const key = JSON.stringify([req, settings]);
   try {
     if (prepared?.key !== key) {
       if (req.vmo !== settings.vmo) saveSettings({ ...settings, vmo: (settings.vmo = req.vmo) });
-      prepared = { key: JSON.stringify([req, settings]), draft: await buildDraft(req, photo) };
+      prepared = { key: JSON.stringify([req, settings]), draft: await buildDraft(req, photo, extras.map((x) => x.blob)) };
     }
     const result = await shareEmail(prepared.draft);
     el.sendStatus.textContent = {
@@ -274,7 +336,7 @@ el.send.addEventListener('click', async () => {
   }
 });
 
-async function buildDraft(req: RequestData, photo: Blob): Promise<EmailDraft> {
+async function buildDraft(req: RequestData, photo: Blob, more: Blob[]): Promise<EmailDraft> {
   const stem = attachmentStem(req);
   const pdf = await fillOrderForm(await template, req, settings, new Date());
   return {
@@ -284,6 +346,7 @@ async function buildDraft(req: RequestData, photo: Blob): Promise<EmailDraft> {
     files: [
       new File([new Uint8Array(pdf)], `High_cost_lens_order_toric_${stem}.pdf`, { type: 'application/pdf' }),
       new File([photo], `Biometry_${stem}.jpg`, { type: 'image/jpeg' }),
+      ...more.map((b, i) => new File([b], `Image_${i + 2}_${stem}.jpg`, { type: 'image/jpeg' })),
     ],
   };
 }
@@ -298,6 +361,10 @@ $('reset').addEventListener('click', () => {
   previewUrl = undefined;
   el.preview.removeAttribute('src');
   el.preview.hidden = true;
+  for (const x of extras) URL.revokeObjectURL(x.url);
+  extras = [];
+  renderExtras();
+  el.extrasStatus.hidden = true;
   for (const i of patientInputs) i.value = '';
   el.mrnWarning.hidden = true;
   selectPlatform(settings.lensPlatform);

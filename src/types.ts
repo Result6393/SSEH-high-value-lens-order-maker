@@ -32,4 +32,6 @@ export interface Settings {
   vmo: string;
   /** Last lens family used (ZCU most of the time). */
   lensPlatform: Platform;
+  /** Email text; `{name}` becomes the sender's first name. Empty means the default. */
+  emailBody: string;
 }

@@ -1,3 +1,4 @@
+import { parsePower } from './lenses';
 import type { RequestData, Settings } from './types';
 
 export const TORIC_THRESHOLD_D = 2;
@@ -6,9 +7,20 @@ export function emailSubject(req: RequestData): string {
   return `Toric IOL request - MRN ${req.mrn} - ${req.eye} eye`;
 }
 
+/** Default email text. `{name}` is replaced by the sender's first name. */
+export const DEFAULT_EMAIL_BODY = [
+  'Hi All,',
+  '',
+  'Please find a filled toric lens request form and biometry.',
+  '',
+  'All the best,',
+  '{name}',
+].join('\n');
+
 export function emailBody(settings: Settings): string {
   const firstName = settings.clinicianName.replace(/^(dr\.?|doctor)\s+/i, '').split(/\s+/)[0] ?? '';
-  return ['Hi All,', 'Please find a filled toric lens request form and biometry.', 'All the best,', firstName].join('\n').trimEnd();
+  const template = settings.emailBody.trim() ? settings.emailBody : DEFAULT_EMAIL_BODY;
+  return template.replace(/\r\n?/g, '\n').replaceAll('{name}', firstName).trimEnd();
 }
 
 /** Filesystem-safe base name for the attachments, e.g. "1234567_R". */
@@ -24,9 +36,9 @@ export function validate(req: RequestData): string[] {
   if (req.dob && !/^\d{2}\/\d{2}\/\d{4}$/.test(req.dob)) problems.push('Date of birth should be dd/mm/yyyy.');
   if (req.astK && Number.isNaN(Number(req.astK))) problems.push('Ast. K should be a number.');
   if (!req.lensModel.trim()) problems.push('Choose the toric lens model.');
-  const power = Number(req.lensPower);
+  const power = parsePower(req.lensPower);
   if (!req.lensPower.trim()) problems.push('Lens power is missing.');
-  else if (Number.isNaN(power) || power < -10 || power > 40) problems.push('Lens power should be a number of dioptres, e.g. 22.0.');
+  else if (power === undefined || power < -10 || power > 40) problems.push('Lens power should be a number of dioptres, e.g. 16 or +16.0D.');
   if (!req.company.trim()) problems.push('Lens company is missing.');
   return problems;
 }

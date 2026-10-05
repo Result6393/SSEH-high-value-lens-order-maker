@@ -12,7 +12,7 @@ const req: RequestData = {
 describe('order form', () => {
   it('fills the template without breaking it', async () => {
     const template = readFileSync(new URL('../public/forms/toric-lens-order-form.pdf', import.meta.url));
-    const out = await fillOrderForm(template, req, { recipients: '', clinicianName: 'Dr Test', contactNumber: '0400 000 000', vmo: '', lensPlatform: 'ZCU' }, new Date(2026, 9, 5));
+    const out = await fillOrderForm(template, req, { recipients: '', clinicianName: 'Dr Test', contactNumber: '0400 000 000', vmo: '', lensPlatform: 'ZCU', emailBody: '' }, new Date(2026, 9, 5));
     expect((await PDFDocument.load(out)).getPageCount()).toBe(1);
   });
 
