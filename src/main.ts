@@ -36,8 +36,8 @@ const el = {
   mrn: input('mrn'),
   mrnWarning: $('mrn-warning'),
   name: input('name'),
-  astK: input('astk'),
-  axis: input('axis'),
+  astKRight: input('astk-re'),
+  astKLeft: input('astk-le'),
   vmo: input('vmo'),
   surgeryDate: input('surgery-date'),
   diagnosis: $<HTMLTextAreaElement>('diagnosis'),
@@ -53,7 +53,7 @@ const el = {
   send: $<HTMLButtonElement>('send'),
   sendStatus: $('send-status'),
 };
-const patientInputs = [el.mrn, el.name, el.astK, el.axis, el.surgeryDate, el.lensPower, el.lensModelOther, el.company];
+const patientInputs = [el.mrn, el.name, el.astKRight, el.astKLeft, el.surgeryDate, el.lensPower, el.lensModelOther, el.company];
 
 // Patient state lives only in these variables and the form fields.
 let photo: Blob | undefined;
@@ -245,13 +245,10 @@ const sticker = initStickerStep(
   },
 );
 
-/** Shows the astigmatism read for the selected eye (the printout has both). */
+/** Shows the astigmatism read for each eye (the printout has both). */
 function fillAstK(): void {
-  const eye = selectedEye();
-  const k = eye && extracted?.astK[eye];
-  if (!eye || !extracted) return refresh();
-  el.astK.value = k?.power ?? '';
-  el.axis.value = k?.axis ?? '';
+  el.astKRight.value = extracted?.astK.Right?.power ?? '';
+  el.astKLeft.value = extracted?.astK.Left?.power ?? '';
   refresh();
 }
 
@@ -343,8 +340,8 @@ function currentRequest(): RequestData | undefined {
     eye,
     mrn: el.mrn.value.trim(),
     name: el.name.value.trim(),
-    astK: el.astK.value.trim(),
-    astAxis: el.axis.value.trim(),
+    astKRight: el.astKRight.value.trim(),
+    astKLeft: el.astKLeft.value.trim(),
     vmo: el.vmo.value.trim(),
     surgeryDate: el.surgeryDate.value,
     diagnosis: el.diagnosis.value.trim(),
@@ -369,10 +366,7 @@ function refresh(): void {
 }
 
 document.querySelectorAll('input[name="eye"]').forEach((r) =>
-  r.addEventListener('change', () => {
-    fillAstK();
-    showLens();
-  }),
+  r.addEventListener('change', showLens),
 );
 document.querySelectorAll<HTMLInputElement>('input[name="platform"]').forEach((r) =>
   r.addEventListener('change', () => {

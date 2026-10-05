@@ -115,23 +115,26 @@
     </section>
 
     <section id="step-details">
-      <h2>3. Operative eye</h2>
-      <fieldset class="eye">
-        <label><input type="radio" name="eye" value="Right" /> Right (OD)</label>
-        <label><input type="radio" name="eye" value="Left" /> Left (OS)</label>
-      </fieldset>
-      <h2>4. Check details</h2>
+      <h2>3. Check details</h2>
       <label>MRN <input id="mrn" type="text" autocomplete="off" /></label>
       <p id="mrn-warning" class="warning" hidden></p>
       <label>Name <input id="name" type="text" autocomplete="off" /></label>
       <div class="row">
-        <label>Ast. K (D) <input id="astk" type="text" inputmode="decimal" autocomplete="off" /></label>
-        <label>Axis (°) <input id="axis" type="text" inputmode="numeric" autocomplete="off" /></label>
+        <label>Ast. K RE (D) <input id="astk-re" type="text" inputmode="decimal" autocomplete="off" /></label>
+        <label>Ast. K LE (D) <input id="astk-le" type="text" inputmode="decimal" autocomplete="off" /></label>
       </div>
       <p id="ast-warning" class="warning" hidden></p>
       <label>VMO surgeon <input id="vmo" type="text" autocomplete="off" /></label>
       <label>Proposed surgery date (optional) <input id="surgery-date" type="date" /></label>
       <label>Diagnosis (on the order form) <textarea id="diagnosis" rows="2" autocomplete="off"></textarea></label>
+    </section>
+
+    <section id="step-eye">
+      <h2>4. Operative eye</h2>
+      <fieldset class="eye">
+        <label><input type="radio" name="eye" value="Right" /> Right (OD)</label>
+        <label><input type="radio" name="eye" value="Left" /> Left (OS)</label>
+      </fieldset>
     </section>
 
     <section id="step-lens">

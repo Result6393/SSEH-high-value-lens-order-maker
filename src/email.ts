@@ -89,9 +89,15 @@ export function validatePatient(req: Pick<RequestData, 'name' | 'mrn'>): string[
   return problems;
 }
 
+/** Ast. K of the operative eye. */
+export function operativeAstK(req: Pick<RequestData, 'eye' | 'astKRight' | 'astKLeft'>): string {
+  return req.eye === 'Right' ? req.astKRight : req.astKLeft;
+}
+
 export function validate(req: RequestData): string[] {
   const problems = validatePatient(req);
-  if (req.astK && Number.isNaN(Number(req.astK))) problems.push('Ast. K should be a number.');
+  if (req.astKRight && Number.isNaN(Number(req.astKRight))) problems.push('Ast. K RE should be a number.');
+  if (req.astKLeft && Number.isNaN(Number(req.astKLeft))) problems.push('Ast. K LE should be a number.');
   if (!req.lensModel.trim()) problems.push('Choose the toric lens model.');
   const power = parsePower(req.lensPower);
   if (!req.lensPower.trim()) problems.push('Lens power is missing.');
@@ -102,7 +108,8 @@ export function validate(req: RequestData): string[] {
 
 /** Non-blocking: the surgeon may have reasons, and OCR may have misread the value. */
 export function eligibilityWarning(req: RequestData): string | undefined {
-  const cyl = Math.abs(Number(req.astK));
-  if (!req.astK || Number.isNaN(cyl) || cyl >= TORIC_THRESHOLD_D) return undefined;
-  return `Ast. K ${req.astK} D is below ${TORIC_THRESHOLD_D.toFixed(2)} D, the toric threshold. Check the value.`;
+  const astK = operativeAstK(req);
+  const cyl = Math.abs(Number(astK));
+  if (!astK || Number.isNaN(cyl) || cyl >= TORIC_THRESHOLD_D) return undefined;
+  return `Ast. K ${astK} D (${req.eye === 'Right' ? 'RE' : 'LE'}) is below ${TORIC_THRESHOLD_D.toFixed(2)} D, the toric threshold. Check the value.`;
 }

@@ -8,9 +8,9 @@ export interface RequestData {
   /** The patient's name as one line, e.g. "SMITH, John". The coordinators match it by hand. */
   name: string;
   mrn: string;
-  /** Corneal astigmatism (IOLMaster "Ast. K") of the operative eye, dioptres. */
-  astK: string;
-  astAxis: string;
+  /** Corneal astigmatism (IOLMaster "Ast. K") of each eye, dioptres; the operative eye's goes on the form. */
+  astKRight: string;
+  astKLeft: string;
   vmo: string;
   /** e.g. "ZCU300" */
   lensModel: string;

@@ -5,7 +5,7 @@ toric IOL approval email for the lens coordinators:
 
 1. Photograph the patient sticker first: the MRN is read from its barcode and the name from the printed text. Then photograph the IOLMaster biometry printout (the both-eyes Barrett Universal II
    page, or a one-eye Barrett Toric page).
-2. Check the operative eye (preselected when only one eye has tables or Ast. K ≥ 2 D, otherwise pick it). That eye's Ast. K is read from the biometry, which also fills in the name or MRN if the sticker
+2. Check the details: both eyes' Ast. K (RE and LE) are read from the biometry. Then choose the operative eye (preselected when only one eye has tables or Ast. K ≥ 2 D, otherwise pick it); its Ast. K goes on the form. That eye's Ast. K is read from the biometry, which also fills in the name or MRN if the sticker
    missed them (check everything against the printout).
 3. Pick the lens: Tecnis ZCU (default) or Clareon. The power is read from that
    lens's table for the chosen eye; on a Barrett Toric page the recommended toric

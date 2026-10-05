@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { operativeAstK } from './email';
 import { formatPower } from './lenses';
 import type { Eye, RequestData, Settings, TutoplastRequest } from './types';
 
@@ -47,7 +48,7 @@ interface FormContent {
 }
 
 export function fillOrderForm(template: ArrayBuffer | Uint8Array, req: RequestData, settings: Settings, today: Date): Promise<Uint8Array> {
-  return fillForm(template, { ...req, implant: `${req.lensModel} ${formatPower(req.lensPower)}`, eyeText: eyeLine(req), title: `High cost lens order - toric - ${req.eye} eye` }, settings, today);
+  return fillForm(template, { ...req, implant: `${req.lensModel} ${formatPower(req.lensPower)}`, eyeText: eyeLine({ eye: req.eye, astK: operativeAstK(req) }), title: `High cost lens order - toric - ${req.eye} eye` }, settings, today);
 }
 
 export function fillTutoplastForm(template: ArrayBuffer | Uint8Array, req: TutoplastRequest, settings: Settings, today: Date): Promise<Uint8Array> {
@@ -77,10 +78,10 @@ async function fillForm(template: ArrayBuffer | Uint8Array, form: FormContent, s
   return doc.save();
 }
 
-export function eyeLine(req: { eye: Eye; astK?: string; astAxis?: string }): string {
+export function eyeLine(req: { eye: Eye; astK?: string }): string {
   const eye = `${req.eye.toUpperCase()} EYE (${req.eye === 'Right' ? 'OD' : 'OS'})`;
   if (!req.astK) return eye;
-  return `${eye}   Corneal astigmatism ${req.astK} D${req.astAxis ? ` @ ${req.astAxis}°` : ''}`;
+  return `${eye}   Corneal astigmatism ${req.astK} D`;
 }
 
 function draw(page: PDFPage, font: PDFFont, cell: keyof typeof CELLS, text: string, size: number): void {

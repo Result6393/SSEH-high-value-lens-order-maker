@@ -4,7 +4,7 @@ import type { RequestData, Settings } from './types';
 
 const req: RequestData = {
   eye: 'Right', name: 'CITIZEN, Jane', mrn: '1234567',
-  astK: '2.39', astAxis: '60', vmo: '', surgeryDate: '', lensModel: 'ZCU300', lensPower: '22', company: 'J&J', diagnosis: 'High cyl / astigmatism >2',
+  astKRight: '2.39', astKLeft: '1.10', vmo: '', surgeryDate: '', lensModel: 'ZCU300', lensPower: '22', company: 'J&J', diagnosis: 'High cyl / astigmatism >2',
 };
 const settings: Settings = { recipients: '', clinicianName: 'Thomas Desmond', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '' };
 
@@ -33,8 +33,9 @@ describe('email', () => {
 
   it('flags missing or malformed fields', () => {
     expect(validate(req)).toEqual([]);
-    expect(validate({ ...req, astK: '' })).toEqual([]);
-    expect(validate({ ...req, name: ' ', astK: 'abc' })).toHaveLength(2);
+    expect(validate({ ...req, astKRight: '' })).toEqual([]);
+    expect(validate({ ...req, name: ' ', astKRight: 'abc' })).toHaveLength(2);
+    expect(validate({ ...req, astKLeft: 'x' })).toEqual(['Ast. K LE should be a number.']);
     expect(validate({ ...req, lensModel: '', lensPower: 'abc' })).toHaveLength(2);
     for (const ok of ['16', '+16', '16.0', '16D', '+16.0D', '16,5', ' 16 d ']) expect(validate({ ...req, lensPower: ok })).toEqual([]);
     expect(validate({ ...req, lensPower: '1600' })).toHaveLength(1);
@@ -42,8 +43,11 @@ describe('email', () => {
 
   it('warns below the toric threshold', () => {
     expect(eligibilityWarning(req)).toBeUndefined();
-    expect(eligibilityWarning({ ...req, astK: '-2.25' })).toBeUndefined();
-    expect(eligibilityWarning({ ...req, astK: '' })).toBeUndefined();
-    expect(eligibilityWarning({ ...req, astK: '0.39' })).toMatch(/below 2.00 D/);
+    expect(eligibilityWarning({ ...req, astKRight: '-2.25' })).toBeUndefined();
+    expect(eligibilityWarning({ ...req, astKRight: '' })).toBeUndefined();
+    expect(eligibilityWarning({ ...req, astKRight: '0.39' })).toMatch(/\(RE\) is below 2.00 D/);
+    // Only the operative eye is judged: the left eye is 1.10 D here.
+    expect(eligibilityWarning({ ...req, eye: 'Left' })).toMatch(/1.10 D \(LE\)/);
+    expect(eligibilityWarning({ ...req, eye: 'Left', astKLeft: '' })).toBeUndefined();
   });
 });

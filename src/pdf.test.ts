@@ -7,7 +7,7 @@ import type { RequestData } from './types';
 
 const req: RequestData = {
   eye: 'Left', name: 'CITIZEN, Jane', mrn: '7654321',
-  astK: '2.39', astAxis: '60', vmo: 'Dr Surgeon', surgeryDate: '2026-11-03', lensModel: 'CNA0T2', lensPower: '20.5', company: 'Alcon', diagnosis: 'High cyl / astigmatism >2',
+  astKRight: '1.10', astKLeft: '2.39', vmo: 'Dr Surgeon', surgeryDate: '2026-11-03', lensModel: 'CNA0T2', lensPower: '20.5', company: 'Alcon', diagnosis: 'High cyl / astigmatism >2',
 };
 
 describe('order form', () => {
@@ -61,7 +61,7 @@ describe('order form', () => {
   });
 
   it('states the operative eye and astigmatism', () => {
-    expect(eyeLine(req)).toBe('LEFT EYE (OS)   Corneal astigmatism 2.39 D @ 60°');
+    expect(eyeLine({ eye: req.eye, astK: req.astKLeft })).toBe('LEFT EYE (OS)   Corneal astigmatism 2.39 D');
     expect(eyeLine({ ...req, eye: 'Right', astK: '' })).toBe('RIGHT EYE (OD)');
   });
 });
