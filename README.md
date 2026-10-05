@@ -6,7 +6,9 @@ toric IOL approval email for the lens coordinators:
 1. Photograph the IOLMaster biometry printout.
 2. Pick the operative eye. MRN, name, date of birth and that eye's Ast. K are
    read from the photo (check them against the printout).
-3. Tap **Prepare email**: the SSEH high cost lens order form (filled in) and the
+3. Pick the lens: Tecnis ZCU (default) or Clareon, and the toric model. The
+   power is read from that lens's table on the printout for the chosen eye.
+4. Tap **Prepare email**: the SSEH high cost lens order form (filled in) and the
    photo go to the phone's share sheet. Choose Outlook, paste your recipients
    (already copied) into To, then send.
 

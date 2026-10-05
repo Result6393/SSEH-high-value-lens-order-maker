@@ -1,6 +1,8 @@
 import './style.css';
 import { attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
 import { extractBiometry, type Extracted } from './extract';
+import { suggestPowers, type LensSuggestions } from './lens-table';
+import { FAMILIES, formatPower, type Platform } from './lenses';
 import { prepareImage } from './image';
 import { readPrintout } from './ocr';
 import { TEMPLATE_URL, fillOrderForm } from './pdf';
@@ -29,17 +31,25 @@ const el = {
   axis: input('axis'),
   vmo: input('vmo'),
   surgeryDate: input('surgery-date'),
+  lensModel: $<HTMLSelectElement>('lens-model'),
+  lensModelOther: input('lens-model-other'),
+  lensPower: input('lens-power'),
+  companyWrap: $('company-wrap'),
+  company: input('company'),
+  lensHint: $('lens-hint'),
+  lensWarning: $('lens-warning'),
   astWarning: $('ast-warning'),
   problems: $<HTMLUListElement>('problems'),
   send: $<HTMLButtonElement>('send'),
   sendStatus: $('send-status'),
 };
-const patientInputs = [el.mrn, el.surname, el.firstName, el.dob, el.astK, el.axis, el.surgeryDate];
+const patientInputs = [el.mrn, el.surname, el.firstName, el.dob, el.astK, el.axis, el.surgeryDate, el.lensPower, el.lensModelOther, el.company];
 
 // Patient state lives only in these variables and the form fields.
 let photo: Blob | undefined;
 let previewUrl: string | undefined;
 let extracted: Extracted | undefined;
+let lensSuggestions: LensSuggestions | undefined;
 let photoToken = 0;
 
 const settings = loadSettings();
@@ -82,15 +92,17 @@ async function onPhoto(file: File): Promise<void> {
     el.preview.hidden = false;
     refresh();
 
-    const texts = await readPrintout(ocr, (stage) => current() && setOcrStatus(stage));
+    const read = await readPrintout(ocr, (stage) => current() && setOcrStatus(stage));
     if (!current()) return;
-    extracted = extractBiometry(texts);
+    extracted = extractBiometry(read.passes);
+    lensSuggestions = suggestPowers(read.tables);
     el.mrn.value = extracted.mrn;
     el.surname.value = extracted.surname;
     el.firstName.value = extracted.firstName;
     el.dob.value = extracted.dob;
     el.mrnWarning.hidden = !extracted.mrnUncertain;
     fillAstK();
+    fillLensPower();
     const missing = [
       !extracted.mrn && 'MRN',
       !extracted.surname && 'name',
@@ -117,6 +129,45 @@ function fillAstK(): void {
   refresh();
 }
 
+function selectedPlatform(): Platform {
+  return (document.querySelector<HTMLInputElement>('input[name="platform"]:checked')?.value as Platform) ?? 'ZCU';
+}
+
+function selectPlatform(platform: Platform): void {
+  document.querySelector<HTMLInputElement>(`input[name="platform"][value="${platform}"]`)!.checked = true;
+  const family = platform === 'Other' ? undefined : FAMILIES[platform];
+  el.lensModel.hidden = !family;
+  el.lensModelOther.hidden = !!family;
+  el.companyWrap.hidden = !!family;
+  if (family) {
+    el.lensModel.replaceChildren(
+      new Option('Choose…', ''),
+      ...family.models.map((m) => new Option(m, m)),
+    );
+  }
+  fillLensPower();
+}
+
+/** Power read from the printout's table for the selected eye and lens family. */
+function fillLensPower(): void {
+  const eye = selectedEye();
+  const platform = selectedPlatform();
+  el.lensWarning.hidden = true;
+  el.lensHint.hidden = true;
+  if (!eye || !lensSuggestions || platform === 'Other') return refresh();
+  const pick = lensSuggestions[eye]?.[platform];
+  el.lensPower.value = pick ? String(pick.power) : '';
+  el.lensHint.hidden = false;
+  el.lensHint.textContent = pick
+    ? `${formatPower(String(pick.power))} from the ${platform === 'ZCU' ? 'ZCB00' : 'Clareon CNA 0Tx'} table (${eye === 'Right' ? 'OD' : 'OS'}). Check it.`
+    : `Couldn't read the ${platform === 'ZCU' ? 'ZCB00' : 'Clareon'} table for this eye. Enter the power.`;
+  if (pick?.uncertain) {
+    el.lensWarning.hidden = false;
+    el.lensWarning.textContent = 'The table read inconsistently. Check the power against the printout.';
+  }
+  refresh();
+}
+
 function setOcrStatus(msg: string): void {
   el.ocrStatus.textContent = msg;
   el.ocrStatus.hidden = !msg;
@@ -129,6 +180,7 @@ function selectedEye(): Eye | undefined {
 function currentRequest(): RequestData | undefined {
   const eye = selectedEye();
   if (!eye) return undefined;
+  const platform = selectedPlatform();
   return {
     eye,
     mrn: el.mrn.value.trim(),
@@ -139,6 +191,9 @@ function currentRequest(): RequestData | undefined {
     astAxis: el.axis.value.trim(),
     vmo: el.vmo.value.trim(),
     surgeryDate: el.surgeryDate.value,
+    lensModel: (selectedPlatform() === 'Other' ? el.lensModelOther.value : el.lensModel.value).trim().toUpperCase(),
+    lensPower: el.lensPower.value.trim(),
+    company: platform === 'Other' ? el.company.value.trim() : FAMILIES[platform].company,
   };
 }
 
@@ -156,7 +211,21 @@ function refresh(): void {
   el.send.disabled = problems.length > 0;
 }
 
-document.querySelectorAll('input[name="eye"]').forEach((r) => r.addEventListener('change', fillAstK));
+document.querySelectorAll('input[name="eye"]').forEach((r) =>
+  r.addEventListener('change', () => {
+    fillAstK();
+    fillLensPower();
+  }),
+);
+document.querySelectorAll<HTMLInputElement>('input[name="platform"]').forEach((r) =>
+  r.addEventListener('change', () => {
+    selectPlatform(r.value as Platform);
+    saveSettings({ ...settings, lensPlatform: (settings.lensPlatform = r.value as Platform) });
+  }),
+);
+el.lensModel.addEventListener('change', refresh);
+el.lensPower.addEventListener('input', () => (el.lensWarning.hidden = true));
+selectPlatform(settings.lensPlatform);
 el.mrn.addEventListener('input', () => (el.mrnWarning.hidden = true));
 document.querySelector('main')!.addEventListener('input', refresh);
 
@@ -213,6 +282,7 @@ $('reset').addEventListener('click', () => {
   photoToken++;
   photo = undefined;
   extracted = undefined;
+  lensSuggestions = undefined;
   prepared = undefined;
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = undefined;
@@ -220,6 +290,7 @@ $('reset').addEventListener('click', () => {
   el.preview.hidden = true;
   for (const i of patientInputs) i.value = '';
   el.mrnWarning.hidden = true;
+  selectPlatform(settings.lensPlatform);
   document.querySelectorAll<HTMLInputElement>('input[name="eye"]').forEach((r) => (r.checked = false));
   setOcrStatus('');
   el.sendStatus.textContent = '';

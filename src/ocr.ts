@@ -1,6 +1,18 @@
-import { createWorker, type Line, type Page, type Worker } from 'tesseract.js';
+import { PSM, createWorker, type Line, type Page, type Worker } from 'tesseract.js';
 import { crop } from './image';
+import { findLensTables, type TableRegion } from './lens-table';
 import type { OcrPass } from './ocr-types';
+
+export interface TableText extends Pick<TableRegion, 'eye' | 'platform'> {
+  text: string;
+}
+
+export interface PrintoutRead {
+  /** Header pass first, then the full page. */
+  passes: OcrPass[];
+  /** Digits-only reads of the lens power tables. */
+  tables: TableText[];
+}
 
 let worker: Promise<Worker> | undefined;
 let progress: (p: number) => void = () => {};
@@ -21,15 +33,18 @@ function getWorker(): Promise<Worker> {
 }
 
 /**
- * Two passes: the full page, then a tight crop of the patient header (from
- * "Patient" to "Physician"), which reads small identifiers more reliably.
- * Returns passes header-first, as extractBiometry expects.
+ * Passes: the full page; a tight crop of the patient header (from "Patient" to
+ * "Physician"), which reads small identifiers more reliably; then each lens
+ * power table, upscaled and read as digits only.
  */
-export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<OcrPass[]> {
+export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<PrintoutRead> {
   const w = await getWorker();
+  // SINGLE_BLOCK is tesseract.js's default; AUTO splits labels from their values.
+  await w.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: '' });
   progress = (p) => onProgress(`Reading page… ${Math.round(p * 100)}%`);
   const page = (await w.recognize(image, {}, { blocks: true })).data;
-  const passes = [toPass(page)];
+  const full = toPass(page);
+  const passes = [full];
 
   const region = headerRegion(linesOf(page), image.height);
   if (region) {
@@ -37,7 +52,20 @@ export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage:
     const header = await w.recognize(crop(image, 0, region.top, image.width, region.bottom - region.top), {}, { blocks: true });
     passes.unshift(toPass(header.data));
   }
-  return passes;
+
+  const tables: TableText[] = [];
+  const regions = findLensTables(full, image.width);
+  await w.setParameters({ tessedit_char_whitelist: '0123456789.+-' });
+  try {
+    for (const [i, r] of regions.entries()) {
+      progress = () => onProgress(`Reading lens tables… ${i + 1}/${regions.length}`);
+      const { data } = await w.recognize(crop(image, r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 2));
+      tables.push({ eye: r.eye, platform: r.platform, text: data.text });
+    }
+  } finally {
+    await w.setParameters({ tessedit_char_whitelist: '' });
+  }
+  return { passes, tables };
 }
 
 const linesOf = (page: Page): Line[] => (page.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines));

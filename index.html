@@ -65,11 +65,30 @@
       <p id="ast-warning" class="warning" hidden></p>
       <label>VMO surgeon <input id="vmo" type="text" autocomplete="off" /></label>
       <label>Proposed surgery date (optional) <input id="surgery-date" type="date" /></label>
-      <ul id="problems" class="problems"></ul>
+    </section>
+
+    <section id="step-lens">
+      <h2>4. Lens</h2>
+      <fieldset class="seg">
+        <label><input type="radio" name="platform" value="ZCU" /> Tecnis ZCU</label>
+        <label><input type="radio" name="platform" value="CNA0T" /> Clareon</label>
+        <label><input type="radio" name="platform" value="Other" /> Other</label>
+      </fieldset>
+      <div class="row">
+        <label>Toric model
+          <select id="lens-model"></select>
+          <input id="lens-model-other" type="text" autocomplete="off" autocapitalize="characters" hidden />
+        </label>
+        <label>Power (D) <input id="lens-power" type="text" inputmode="decimal" autocomplete="off" /></label>
+      </div>
+      <label id="company-wrap" hidden>Company <input id="company" type="text" autocomplete="off" /></label>
+      <p id="lens-hint" class="hint" hidden></p>
+      <p id="lens-warning" class="warning" hidden></p>
     </section>
 
     <section id="step-send">
-      <h2>4. Send</h2>
+      <h2>5. Send</h2>
+      <ul id="problems" class="problems"></ul>
       <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. Your recipients are copied, so paste them into To.</p>
       <button id="send" class="primary" type="button" disabled>Prepare email</button>
       <button id="reset" type="button">Next patient</button>

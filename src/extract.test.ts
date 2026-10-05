@@ -17,7 +17,7 @@ const extract = (...texts: string[]) => extractBiometry(texts.map(pass));
 
 describe('extractBiometry', () => {
   it('reads a real IOLMaster 700 photo (browser OCR output, fake identifiers)', () => {
-    const passes: OcrPass[] = JSON.parse(readFileSync(new URL('../test/fixtures/iolmaster-700-photo.json', import.meta.url), 'utf8'));
+    const { passes }: { passes: OcrPass[] } = JSON.parse(readFileSync(new URL('../test/fixtures/iolmaster-700-photo.json', import.meta.url), 'utf8'));
     const r = extractBiometry(passes);
     expect(r).toMatchObject({ surname: 'CITIZEN', mrn: '7654321', dob: '01/02/1950' });
     expect(r.firstName).toBe('Jane');

@@ -1,3 +1,5 @@
+import type { Platform } from './lenses';
+
 export type Eye = 'Right' | 'Left';
 
 /** Everything about one request. Lives in memory only and is discarded on reset. */
@@ -12,6 +14,11 @@ export interface RequestData {
   astK: string;
   astAxis: string;
   vmo: string;
+  /** e.g. "ZCU300" */
+  lensModel: string;
+  /** Spherical power in dioptres, e.g. "22" or "+22.0". */
+  lensPower: string;
+  company: string;
   /** yyyy-mm-dd from <input type="date">, optional. */
   surgeryDate: string;
 }
@@ -23,4 +30,6 @@ export interface Settings {
   contactNumber: string;
   /** Last VMO surgeon used, to prefill the next request. */
   vmo: string;
+  /** Last lens family used (ZCU most of the time). */
+  lensPlatform: Platform;
 }

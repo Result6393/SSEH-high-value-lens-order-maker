@@ -23,6 +23,11 @@ export function validate(req: RequestData): string[] {
   if (!req.mrn.trim()) problems.push('MRN is missing.');
   if (req.dob && !/^\d{2}\/\d{2}\/\d{4}$/.test(req.dob)) problems.push('Date of birth should be dd/mm/yyyy.');
   if (req.astK && Number.isNaN(Number(req.astK))) problems.push('Ast. K should be a number.');
+  if (!req.lensModel.trim()) problems.push('Choose the toric lens model.');
+  const power = Number(req.lensPower);
+  if (!req.lensPower.trim()) problems.push('Lens power is missing.');
+  else if (Number.isNaN(power) || power < -10 || power > 40) problems.push('Lens power should be a number of dioptres, e.g. 22.0.');
+  if (!req.company.trim()) problems.push('Lens company is missing.');
   return problems;
 }
 

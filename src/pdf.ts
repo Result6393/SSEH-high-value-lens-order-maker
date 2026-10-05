@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { formatPower } from './lenses';
 import type { RequestData, Settings } from './types';
 
 export const TEMPLATE_URL = 'forms/toric-lens-order-form.pdf';
@@ -18,10 +19,12 @@ const CELLS = {
   vmo: [252, 406, 447],
   submittedBy: [258, 447, 478],
   contact: [622, 447, 478],
+  lens: [270, 507, 538],
+  company: [270, 538, 569],
   eye: [252, 569, 599],
 } as const satisfies Record<string, readonly [number, number, number]>;
 // Max text width per cell, same pixel units.
-const WIDTH = { dateRequested: 74, surgeryDate: 74, mrn: 210, surname: 210, firstName: 210, dob: 86, age: 118, vmo: 155, submittedBy: 150, contact: 100, eye: 470 };
+const WIDTH = { dateRequested: 74, surgeryDate: 74, mrn: 210, surname: 210, firstName: 210, dob: 86, age: 118, vmo: 155, submittedBy: 150, contact: 100, lens: 450, company: 450, eye: 470 };
 
 const BLUE = rgb(0, 0.47, 0.83);
 
@@ -43,6 +46,10 @@ export async function fillOrderForm(template: ArrayBuffer | Uint8Array, req: Req
   put('vmo', req.vmo);
   put('submittedBy', settings.clinicianName);
   put('contact', settings.contactNumber);
+  // The template has "ZCU" / "J&J" printed in these rows; blank them first.
+  for (const [top, bottom] of [[507, 538], [538, 569]]) whiteout(page, 247, top + 2, 725, bottom - 2);
+  put('lens', `${req.lensModel} ${formatPower(req.lensPower)}`, bold, 12);
+  put('company', req.company, font, 12);
   put('eye', eyeLine(req), bold, 12);
 
   doc.setTitle(`High cost lens order - toric - ${req.eye} eye`);
@@ -62,6 +69,16 @@ function draw(page: PDFPage, font: PDFFont, cell: keyof typeof CELLS, text: stri
   while (size > 6 && font.widthOfTextAtSize(text, size) > maxWidth) size -= 0.5;
   const y = page.getHeight() - ((top + bottom) / 2) * PX - size * 0.35;
   page.drawText(text, { x: x * PX, y, size, font, color: BLUE });
+}
+
+function whiteout(page: PDFPage, x0: number, top: number, x1: number, bottom: number): void {
+  page.drawRectangle({
+    x: x0 * PX,
+    y: page.getHeight() - bottom * PX,
+    width: (x1 - x0) * PX,
+    height: (bottom - top) * PX,
+    color: rgb(1, 1, 1),
+  });
 }
 
 function formatDate(d: Date): string {

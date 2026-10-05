@@ -18,11 +18,17 @@ export async function prepareImage(file: File): Promise<{ ocr: HTMLCanvasElement
   return { ocr, jpeg };
 }
 
-export function crop(src: HTMLCanvasElement, x: number, y: number, w: number, h: number): HTMLCanvasElement {
+export function crop(src: HTMLCanvasElement, x: number, y: number, w: number, h: number, scale = 1): HTMLCanvasElement {
+  x = Math.max(0, x);
+  y = Math.max(0, y);
+  w = Math.min(w, src.width - x);
+  h = Math.min(h, src.height - y);
   const c = document.createElement('canvas');
-  c.width = Math.max(1, Math.round(w));
-  c.height = Math.max(1, Math.round(h));
-  c.getContext('2d')!.drawImage(src, x, y, w, h, 0, 0, c.width, c.height);
+  c.width = Math.max(1, Math.round(w * scale));
+  c.height = Math.max(1, Math.round(h * scale));
+  const g = c.getContext('2d')!;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(src, x, y, w, h, 0, 0, c.width, c.height);
   return c;
 }
 

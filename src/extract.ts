@@ -206,7 +206,7 @@ function parseAstK(seg: string): AstK | undefined {
 }
 
 /** Left edges of the OD and OS biometry columns, from their row labels. */
-function columnEdges(lines: OcrLine[]): { od: number; os: number } | undefined {
+export function columnEdges(lines: OcrLine[]): { od: number; os: number } | undefined {
   const xs = lines
     .flatMap((l) => l.words)
     .filter((w) => /^(AL|ACD|LT|CCT|K1|K2)$/.test(w.text))
