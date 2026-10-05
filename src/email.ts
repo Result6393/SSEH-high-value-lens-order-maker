@@ -7,8 +7,13 @@ export function emailSubject(req: RequestData): string {
   return `Toric IOL request - MRN ${req.mrn} - ${req.eye} eye`;
 }
 
-/** Default email text. `{name}` is replaced by the sender's first name. */
+/**
+ * Default email text. Placeholders: `{patient}` ("SURNAME, First"), `{mrn}`, and
+ * `{name}` (the sender's first name).
+ */
 export const DEFAULT_EMAIL_BODY = [
+  'RE: {patient} {mrn}',
+  '',
   'Hi All,',
   '',
   'Please find a filled toric lens request form and biometry.',
@@ -17,10 +22,22 @@ export const DEFAULT_EMAIL_BODY = [
   '{name}',
 ].join('\n');
 
-export function emailBody(settings: Settings): string {
+/** "SURNAME, First", as on the printout. */
+export function patientName(req: Pick<RequestData, 'surname' | 'firstName'>): string {
+  const surname = req.surname.trim().toUpperCase();
+  const first = req.firstName.trim();
+  return first ? `${surname}, ${first}` : surname;
+}
+
+export function emailBody(settings: Settings, req: RequestData): string {
   const firstName = settings.clinicianName.replace(/^(dr\.?|doctor)\s+/i, '').split(/\s+/)[0] ?? '';
   const template = settings.emailBody.trim() ? settings.emailBody : DEFAULT_EMAIL_BODY;
-  return template.replace(/\r\n?/g, '\n').replaceAll('{name}', firstName).trimEnd();
+  return template
+    .replace(/\r\n?/g, '\n')
+    .replaceAll('{patient}', patientName(req))
+    .replaceAll('{mrn}', req.mrn.trim())
+    .replaceAll('{name}', firstName)
+    .trimEnd();
 }
 
 /** Filesystem-safe base name for the attachments, e.g. "1234567_R". */

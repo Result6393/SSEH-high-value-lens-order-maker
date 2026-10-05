@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
+import { attachmentStem, eligibilityWarning, emailBody, emailSubject, patientName, validate } from './email';
 import type { RequestData, Settings } from './types';
 
 const req: RequestData = {
@@ -11,16 +11,19 @@ const settings: Settings = { recipients: '', clinicianName: 'Thomas Desmond', co
 describe('email', () => {
   it('builds subject, body and attachment names', () => {
     expect(emailSubject(req)).toBe('Toric IOL request - MRN 1234567 - Right eye');
-    expect(emailBody(settings)).toBe('Hi All,\n\nPlease find a filled toric lens request form and biometry.\n\nAll the best,\nThomas');
-    expect(emailBody({ ...settings, clinicianName: 'Dr Jo Bloggs' })).toMatch(/\nJo$/);
+    expect(emailBody(settings, req)).toBe(
+      'RE: CITIZEN, Jane 1234567\n\nHi All,\n\nPlease find a filled toric lens request form and biometry.\n\nAll the best,\nThomas',
+    );
+    expect(emailBody({ ...settings, clinicianName: 'Dr Jo Bloggs' }, req)).toMatch(/\nJo$/);
+    expect(patientName({ surname: 'o\'neil', firstName: '' })).toBe("O'NEIL");
     expect(attachmentStem({ ...req, eye: 'Left', mrn: '12/34' })).toBe('1234_L');
   });
 
-  it('uses the custom email text, replacing {name} everywhere, and falls back to the default when blank', () => {
-    const custom = { ...settings, emailBody: 'Hello team,\r\n\r\nPlease approve.\r\n\r\nThanks, {name}\n\n' };
-    expect(emailBody(custom)).toBe('Hello team,\n\nPlease approve.\n\nThanks, Thomas');
-    expect(emailBody({ ...settings, emailBody: '   \n ' })).toBe(emailBody(settings));
-    expect(emailBody({ ...settings, emailBody: 'No placeholder here' })).toBe('No placeholder here');
+  it('uses the custom email text, replacing placeholders everywhere, and falls back to the default when blank', () => {
+    const custom = { ...settings, emailBody: 'Hello team,\r\n\r\nRe {patient} ({mrn}, {mrn}).\r\n\r\nThanks, {name}\n\n' };
+    expect(emailBody(custom, req)).toBe('Hello team,\n\nRe CITIZEN, Jane (1234567, 1234567).\n\nThanks, Thomas');
+    expect(emailBody({ ...settings, emailBody: '   \n ' }, req)).toBe(emailBody(settings, req));
+    expect(emailBody({ ...settings, emailBody: 'No placeholder here' }, req)).toBe('No placeholder here');
   });
 
   it('flags missing or malformed fields', () => {

@@ -342,7 +342,7 @@ async function buildDraft(req: RequestData, photo: Blob, more: Blob[]): Promise<
   return {
     to: settings.recipients,
     subject: emailSubject(req),
-    body: emailBody(settings),
+    body: emailBody(settings, req),
     files: [
       new File([new Uint8Array(pdf)], `High_cost_lens_order_toric_${stem}.pdf`, { type: 'application/pdf' }),
       new File([photo], `Biometry_${stem}.jpg`, { type: 'image/jpeg' }),
