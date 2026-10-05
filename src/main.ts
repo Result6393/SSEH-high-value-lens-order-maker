@@ -1,8 +1,8 @@
 import './style.css';
-import { attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
+import { TORIC_THRESHOLD_D, attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
 import { extractBiometry, type Extracted } from './extract';
 import { suggestLenses, type LensSuggestions } from './lens-table';
-import { FAMILIES, formatPower, modelForCylinder, type Platform } from './lenses';
+import { FAMILIES, formatPower, inferEye, modelForCylinder, type Platform } from './lenses';
 import { prepareImage } from './image';
 import { readPrintout } from './ocr';
 import { TEMPLATE_URL, fillOrderForm } from './pdf';
@@ -96,12 +96,12 @@ async function onPhoto(file: File): Promise<void> {
     if (!current()) return;
     extracted = extractBiometry(read.passes);
     lensSuggestions = suggestLenses(read.tables);
-    // Barrett Toric pages only have tables for the eye being operated on.
-    const eyes = Object.keys(lensSuggestions) as Eye[];
+    // Preselect the eye when the printout makes it obvious (the user can still change it).
     let eyeNote = '';
-    if (!selectedEye() && eyes.length === 1) {
-      document.querySelector<HTMLInputElement>(`input[name="eye"][value="${eyes[0]}"]`)!.checked = true;
-      eyeNote = ` The lens tables are for the ${eyes[0].toUpperCase()} eye only, so it's selected.`;
+    const guess = !selectedEye() && inferEye(Object.keys(lensSuggestions) as Eye[], extracted.astK, TORIC_THRESHOLD_D);
+    if (guess) {
+      document.querySelector<HTMLInputElement>(`input[name="eye"][value="${guess.eye}"]`)!.checked = true;
+      eyeNote = ` ${guess.eye.toUpperCase()} eye selected: ${guess.reason}. Change it if that's wrong.`;
     }
     el.mrn.value = extracted.mrn;
     el.surname.value = extracted.surname;

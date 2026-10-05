@@ -2,6 +2,8 @@
 // from the matching monofocal table on the IOLMaster printout; the toric model
 // (cylinder) comes from the toric calculator, so the user picks it.
 
+import type { Eye } from './types';
+
 export type Platform = 'ZCU' | 'CNA0T' | 'Other';
 
 export interface LensFamily {
@@ -42,4 +44,19 @@ export function modelForCylinder(platform: Exclude<Platform, 'Other'>, cyl: numb
   const i = CYLINDERS.indexOf(cyl);
   if (i < 0) return undefined;
   return platform === 'ZCU' ? `ZCU${String(Math.round(cyl * 100)).padStart(3, '0')}` : `CNA0T${i + 2}`;
+}
+
+/**
+ * The operative eye when the printout makes it obvious: the only eye with lens
+ * tables, else the only eye with astigmatism at or above the toric threshold.
+ */
+export function inferEye(
+  tableEyes: Eye[],
+  astK: Partial<Record<Eye, { power: string }>>,
+  threshold: number,
+): { eye: Eye; reason: string } | undefined {
+  if (tableEyes.length === 1) return { eye: tableEyes[0], reason: 'the lens tables are for that eye only' };
+  const high = (['Right', 'Left'] as Eye[]).filter((e) => Math.abs(Number(astK[e]?.power)) >= threshold);
+  if (high.length === 1) return { eye: high[0], reason: `only that eye has Ast. K of ${threshold.toFixed(2)} D or more` };
+  return undefined;
 }

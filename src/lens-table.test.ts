@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { findLensTables, pickCylinder, pickPower, suggestLenses, type TableText } from './lens-table';
-import { formatPower, modelForCylinder, roundToHalf } from './lenses';
+import { formatPower, inferEye, modelForCylinder, roundToHalf } from './lenses';
 import type { OcrPass } from './ocr-types';
 
 describe('pickPower', () => {
@@ -131,5 +131,26 @@ describe('lens helpers', () => {
     expect(modelForCylinder('ZCU', 1)).toBe('ZCU100');
     expect(modelForCylinder('CNA0T', 6)).toBe('CNA0T9');
     expect(modelForCylinder('ZCU', 2)).toBeUndefined();
+  });
+});
+
+describe('inferEye', () => {
+  const ast = (r?: string, l?: string) => ({ ...(r ? { Right: { power: r } } : {}), ...(l ? { Left: { power: l } } : {}) });
+
+  it('uses the only eye with tables', () => {
+    expect(inferEye(['Left'], ast('2.5', '2.6'), 2)?.eye).toBe('Left');
+  });
+
+  it('uses the only eye with Ast. K >= 2 D', () => {
+    expect(inferEye(['Right', 'Left'], ast('2.12', '0.83'), 2)).toMatchObject({ eye: 'Right' });
+    expect(inferEye([], ast('0.5', '-2.25'), 2)?.eye).toBe('Left');
+    expect(inferEye([], ast('2.00', '1.99'), 2)?.eye).toBe('Right');
+  });
+
+  it('does not guess when both, neither or nothing qualifies', () => {
+    expect(inferEye(['Right', 'Left'], ast('2.5', '3.1'), 2)).toBeUndefined();
+    expect(inferEye(['Right', 'Left'], ast('0.5', '0.8'), 2)).toBeUndefined();
+    expect(inferEye(['Right', 'Left'], {}, 2)).toBeUndefined();
+    expect(inferEye(['Right', 'Left'], ast('2.4'), 2)?.eye).toBe('Right');
   });
 });
