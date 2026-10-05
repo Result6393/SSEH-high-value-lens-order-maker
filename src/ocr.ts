@@ -6,8 +6,8 @@ import { decodeBarcode } from './barcode';
 import { extractSticker, mrnFromBarcode, stickerBand, type Sticker } from './sticker';
 
 export interface StickerRead extends Sticker {
-  /** From the barcode only; empty when no barcode could be read. */
-  mrn: string;
+  /** Where `mrn` came from: the barcode, else the printed digits (less reliable), else nothing. */
+  mrnSource: 'barcode' | 'text' | '';
 }
 
 export interface PrintoutRead {
@@ -79,17 +79,17 @@ export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage:
 }
 
 /**
- * Reads a patient sticker: the MRN from its barcode (never from the printed digits), the
- * name from the text: the whole photo, then a tight crop of the sticker for a
+ * Reads a patient sticker: the MRN from its barcode (from the printed digits only if the
+ * barcode can't be read), the name from the text: the whole photo, then a tight crop of the sticker for a
  * cleaner read. If that doesn't find the name, the photo is tried turned a
  * quarter either way (stickers are often photographed sideways), keeping the best read.
  */
 export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<StickerRead> {
   const w = await getWorker();
   await w.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: '' });
-  let best: Sticker = { surname: '', firstName: '' };
+  let best: Sticker = { mrn: '', surname: '', firstName: '' };
   let barcodeMrn = '';
-  const score = (s: Sticker) => Number(!!s.surname) + Number(!!s.firstName) / 2;
+  const score = (s: Sticker) => Number(!!s.surname) + Number(!!s.firstName) / 2 + Number(!!s.mrn) / 4;
   for (const turns of [0, 1, 3]) {
     const img = turns ? rotate(image, turns) : image;
     const label = turns ? ' (turned)' : '';
@@ -107,7 +107,8 @@ export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: 
     if (score(sticker) > score(best)) best = sticker;
     if (best.surname) break;
   }
-  return { ...best, mrn: barcodeMrn };
+  const mrn = barcodeMrn || best.mrn;
+  return { ...best, mrn, mrnSource: barcodeMrn ? 'barcode' : mrn ? 'text' : '' };
 }
 
 const linesOf = (page: Page): Line[] => (page.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines));

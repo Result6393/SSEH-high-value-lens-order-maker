@@ -107,8 +107,15 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
       if (mine !== token) return;
       el.mrn.value = sticker.mrn;
       el.name.value = joinName(sticker.surname, sticker.firstName);
-      const missing = [!sticker.mrn && 'MRN barcode', !sticker.surname && 'name'].filter(Boolean);
-      setStatus(missing.length ? `Couldn't read the ${missing.join(' or the ')}. Fill it in by hand.` : 'MRN from the barcode. Check the name against the sticker.');
+      const missing = [!sticker.mrn && 'MRN', !sticker.surname && 'name'].filter(Boolean);
+      setStatus(
+        (missing.length ? `Couldn't read the ${missing.join(' or the ')}. Fill it in by hand. ` : '') +
+          {
+            barcode: 'MRN from the barcode. Check the name against the sticker.',
+            text: "The barcode couldn't be read, so the MRN comes from the printed digits. Check every digit.",
+            '': '',
+          }[sticker.mrnSource],
+      );
     } catch (e) {
       setStatus(`Problem reading the photo: ${(e as Error).message}`);
     }

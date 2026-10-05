@@ -1,5 +1,5 @@
-// Reads the patient name from a hospital patient sticker's OCR text (the MRN comes
-// from the barcode only; see barcode.ts).
+// Reads the patient name (and, as a fallback only, the printed MRN) from a hospital
+// patient sticker's OCR text. The MRN normally comes from the barcode; see barcode.ts.
 // The SSEH sticker looks like:
 //
 //   12345678   Sydney/Sydney Eye Hospital     |||| barcode ||||
@@ -16,6 +16,8 @@ import { lineText } from './extract';
 import type { OcrPass } from './ocr-types';
 
 export interface Sticker {
+  /** The printed number: OCR misreads digits, so use it only when the barcode can't be read. */
+  mrn: string;
   surname: string;
   firstName: string;
 }
@@ -27,8 +29,7 @@ const STREET = /\b(?:st|street|rd|road|ave|avenue|dr|drive|pde|parade|lane|ln|cr
 
 /**
  * The MRN in a sticker barcode: Code 39 text like "4872845.SYD" (MRN, then a site
- * suffix). Returns '' when the text isn't a 6-10 digit number. The MRN is never read
- * from the sticker's printed text: OCR misreads digits.
+ * suffix). Returns '' when the text isn't a 6-10 digit number.
  */
 export function mrnFromBarcode(text: string | undefined): string {
   const digits = (text ?? '').trim().replace(/\.[A-Za-z]{2,4}$/, '').replace(/[-\s]/g, '');
@@ -37,11 +38,12 @@ export function mrnFromBarcode(text: string | undefined): string {
 
 /** Earlier passes win (pass the tight crop first, then the full photo). */
 export function extractSticker(passes: OcrPass[]): Sticker {
-  const name = passes.map(findStickerName).find(Boolean);
-  return { surname: name?.surname ?? '', firstName: name?.firstName ?? '' };
+  const parsed = passes.map(parseOne);
+  const name = parsed.find((p) => p.name)?.name;
+  return { mrn: parsed.map((p) => p.mrn).find(Boolean) ?? '', surname: name?.surname ?? '', firstName: name?.firstName ?? '' };
 }
 
-function findStickerName(pass: OcrPass) {
+function parseOne(pass: OcrPass) {
   const lines = pass.lines.map(lineText).filter(Boolean);
   const dob = lines.findIndex((l) => DOB_LINE.test(l));
   const above = dob >= 0 ? lines.slice(0, dob) : lines;
@@ -49,7 +51,23 @@ function findStickerName(pass: OcrPass) {
   // number) and ends at the DOB line; the form's printed labels sit above it.
   let start = above.findIndex((l) => HOSPITAL.test(l));
   if (start < 0) start = above.findIndex((l) => ID_LINE.test(l));
-  return start < 0 ? undefined : findName(lines.slice(start, dob >= 0 ? dob : start + 4));
+  const window = start < 0 ? [] : lines.slice(start, dob >= 0 ? dob : start + 4);
+  return { mrn: findMrn(window), name: findName(window) };
+}
+
+/**
+ * A standalone 6-10 digit number; OCR often reads 0 as O and 1 as I/l in IDs. The sticker
+ * prints it with dashes ("487-28-45"), which are dropped.
+ */
+function findMrn(lines: string[]): string {
+  for (const line of lines) {
+    for (const token of line.split(/\s+/)) {
+      const t = token.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '');
+      if (/^\d{2,4}(?:-\d{2,4}){1,3}$/.test(t) && /^\d{6,10}$/.test(t.replace(/-/g, ''))) return t.replace(/-/g, '');
+      if (/^[0-9OoIl]{6,10}$/.test(t) && (t.match(/\d/g)?.length ?? 0) >= 5) return t.replace(/[Oo]/g, '0').replace(/[Il]/g, '1');
+    }
+  }
+  return '';
 }
 
 function findName(lines: string[]): { surname: string; firstName: string } | undefined {
