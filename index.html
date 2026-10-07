@@ -62,13 +62,18 @@
       </label>
       <p class="hint">Same placeholders; <code>{lens}</code> is the implant (Tutoplast).</p>
       <button id="tp-email-reset" type="button">Reset tutoplast email text to default</button>
+      <label>iStent email text
+        <textarea id="is-email-body" rows="8" autocomplete="off" spellcheck="true"></textarea>
+      </label>
+      <p class="hint">Same placeholders; <code>{lens}</code> is the implant (iStent inject W).</p>
+      <button id="is-email-reset" type="button">Reset iStent email text to default</button>
       <button id="settings-done" class="primary" type="button">Done</button>
       <p id="build-info" class="hint"></p>
     </section>
 
     <nav class="tabs" role="tablist">
       <button id="tab-toric-btn" type="button" role="tab" aria-selected="true" aria-controls="tab-toric">Toric lens</button>
-      <button id="tab-tutoplast-btn" type="button" role="tab" aria-selected="false" aria-controls="tab-tutoplast">Tutoplast</button>
+      <button id="tab-tutoplast-btn" type="button" role="tab" aria-selected="false" aria-controls="tab-tutoplast">Tutoplast / iStent</button>
     </nav>
 
     <div id="tab-toric" class="tab" role="tabpanel">
@@ -151,6 +156,10 @@
 
     <div id="tab-tutoplast" class="tab" role="tabpanel" hidden>
       <section>
+        <fieldset class="seg">
+          <label><input type="radio" name="tp-kind" value="tutoplast" /> Tutoplast</label>
+          <label><input type="radio" name="tp-kind" value="istent" /> iStent</label>
+        </fieldset>
         <h2>1. Patient sticker</h2>
         <p class="hint" style="margin-top:0">Photograph the patient sticker. No biometry is needed.</p>
         <div class="row">

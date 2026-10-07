@@ -57,12 +57,28 @@ export const DEFAULT_TUTOPLAST_EMAIL_BODY = [
   '{name}',
 ].join('\n');
 
+/** Default text for iStent orders; `{lens}` is the implant ("iStent inject W"). */
+export const DEFAULT_ISTENT_EMAIL_BODY = [
+  'RE: {patient} {mrn}',
+  '{lens}',
+  '',
+  'Hi All,',
+  '',
+  "Here's an iStent order form.",
+  '',
+  'All the best,',
+  '{name}',
+].join('\n');
+
+/** Subject for the sticker tab's orders (tutoplast or iStent). */
 export function tutoplastSubject(req: TutoplastRequest): string {
-  return `Tutoplast order - MRN ${req.mrn} - ${req.eye} eye`;
+  return `${req.kind === 'istent' ? 'iStent' : 'Tutoplast'} order - MRN ${req.mrn} - ${req.eye} eye`;
 }
 
 export function tutoplastBody(settings: Settings, req: TutoplastRequest): string {
-  return render(settings.tutoplastEmailBody, DEFAULT_TUTOPLAST_EMAIL_BODY, settings, req, req.implant.trim());
+  const [custom, stock] =
+    req.kind === 'istent' ? [settings.istentEmailBody, DEFAULT_ISTENT_EMAIL_BODY] : [settings.tutoplastEmailBody, DEFAULT_TUTOPLAST_EMAIL_BODY];
+  return render(custom, stock, settings, req, req.implant.trim());
 }
 
 function render(custom: string, stock: string, settings: Settings, req: Pick<RequestData, 'name' | 'mrn'>, lens: string): string {

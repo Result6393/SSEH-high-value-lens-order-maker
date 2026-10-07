@@ -2,7 +2,7 @@ import type { Settings } from './types';
 
 const KEY = 'toric-iol-settings';
 
-const DEFAULTS: Settings = { recipients: '', clinicianName: '', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '' };
+const DEFAULTS: Settings = { recipients: '', clinicianName: '', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' };
 
 export function loadSettings(): Settings {
   try {

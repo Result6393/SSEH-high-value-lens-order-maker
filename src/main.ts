@@ -1,5 +1,5 @@
 import './style.css';
-import { DEFAULT_EMAIL_BODY, joinName, DEFAULT_TUTOPLAST_EMAIL_BODY, TORIC_THRESHOLD_D, attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
+import { DEFAULT_EMAIL_BODY, joinName, DEFAULT_TUTOPLAST_EMAIL_BODY, DEFAULT_ISTENT_EMAIL_BODY, TORIC_THRESHOLD_D, attachmentStem, eligibilityWarning, emailBody, emailSubject, validate } from './email';
 import { extractBiometry, type Extracted } from './extract';
 import { suggestLenses, type LensSuggestions } from './lens-table';
 import { LensMemory } from './lens-memory';
@@ -24,6 +24,7 @@ const el = {
   contact: input('contact'),
   emailBody: $<HTMLTextAreaElement>('email-body'),
   tpEmailBody: $<HTMLTextAreaElement>('tp-email-body'),
+  isEmailBody: $<HTMLTextAreaElement>('is-email-body'),
   camera: input('camera'),
   library: input('library'),
   preview: $<HTMLImageElement>('preview'),
@@ -77,6 +78,7 @@ el.clinician.value = settings.clinicianName;
 el.contact.value = settings.contactNumber;
 el.emailBody.value = settings.emailBody || DEFAULT_EMAIL_BODY;
 el.tpEmailBody.value = settings.tutoplastEmailBody || DEFAULT_TUTOPLAST_EMAIL_BODY;
+el.isEmailBody.value = settings.istentEmailBody || DEFAULT_ISTENT_EMAIL_BODY;
 el.vmo.value = settings.vmo;
 if (!settings.clinicianName || !parseRecipients(settings.recipients).length) el.settings.hidden = false;
 
@@ -98,6 +100,8 @@ $('settings-done').addEventListener('click', () => {
   settings.emailBody = text.trim() === DEFAULT_EMAIL_BODY ? '' : text;
   const tpText = el.tpEmailBody.value.replace(/\r\n?/g, '\n');
   settings.tutoplastEmailBody = tpText.trim() === DEFAULT_TUTOPLAST_EMAIL_BODY ? '' : tpText;
+  const isText = el.isEmailBody.value.replace(/\r\n?/g, '\n');
+  settings.istentEmailBody = isText.trim() === DEFAULT_ISTENT_EMAIL_BODY ? '' : isText;
   saveSettings(settings);
   el.settings.hidden = true;
   refresh();
@@ -105,6 +109,7 @@ $('settings-done').addEventListener('click', () => {
 
 $('email-reset').addEventListener('click', () => (el.emailBody.value = DEFAULT_EMAIL_BODY));
 $('tp-email-reset').addEventListener('click', () => (el.tpEmailBody.value = DEFAULT_TUTOPLAST_EMAIL_BODY));
+$('is-email-reset').addEventListener('click', () => (el.isEmailBody.value = DEFAULT_ISTENT_EMAIL_BODY));
 
 for (const picker of [el.extraCamera, el.extraLibrary]) {
   picker.addEventListener('change', () => {

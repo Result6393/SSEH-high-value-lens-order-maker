@@ -35,7 +35,7 @@ const WIDTH = { dateRequested: 74, surgeryDate: 74, mrn: 210, name: 210, dob: 86
 
 const BLUE = rgb(0, 0.47, 0.83);
 
-/** What goes into the form's boxes; the toric and tutoplast orders differ only in these. */
+/** What goes into the form's boxes; the toric, tutoplast and iStent orders differ only in these. */
 interface FormContent {
   mrn: string;
   name: string;
@@ -54,7 +54,7 @@ export function fillOrderForm(template: ArrayBuffer | Uint8Array, req: RequestDa
 }
 
 export function fillTutoplastForm(template: ArrayBuffer | Uint8Array, req: TutoplastRequest, settings: Settings, today: Date): Promise<Uint8Array> {
-  return fillForm(template, { ...req, eyeText: eyeLine(req), title: `High cost order - tutoplast - ${req.eye} eye` }, settings, today);
+  return fillForm(template, { ...req, eyeText: eyeLine(req), title: `High cost order - ${req.kind === 'istent' ? 'iStent' : 'tutoplast'} - ${req.eye} eye` }, settings, today);
 }
 
 async function fillForm(template: ArrayBuffer | Uint8Array, form: FormContent, settings: Settings, today: Date): Promise<Uint8Array> {
