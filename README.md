@@ -1,4 +1,4 @@
-# SSEH Orders (toric lens and tutoplast)
+# SSEH Orders (toric lens, tutoplast and iStent)
 
 Phone web app (installable PWA) that turns a photo of a biometry printout into a
 toric IOL approval email for the lens coordinators:
@@ -21,15 +21,16 @@ What you choose for each eye and lens type (Tecnis / Clareon / Other) is remembe
 Lens powers can be typed any way ("16", "+16", "16.0D"); they are written as "+16.0D".
 The email text can be changed in Settings; `{patient}`, `{mrn}`, `{lens}` and `{name}` (your first name) are filled in.
 
-## Tutoplast tab
+## Tutoplast / iStent tab
 
-For tutoplast orders (same SSEH high cost form, same recipients): photograph the patient sticker
+Choose **Tutoplast** or **iStent** at the top (remembered). For these orders (same SSEH high cost form, same recipients): photograph the patient sticker
 (any orientation, even stuck onto a form), check the MRN and name (one field), choose the operative
 eye and pick the diagnosis from the dropdown ("IOP not controlled…", "Hypotony…", or **Other** with a
-text box). No biometry is needed. **Prepare email** attaches the filled form only (the sticker photo is
-not sent). The MRN is taken from the sticker's barcode; only if the barcode can't be read does it use the printed digits (and tells you to check every digit). The name is read from the printed text. The email text for this tab is separate in Settings.
+text box). For iStent the diagnosis is preset to "Glaucoma with IOP not adequately controlled with maximal medical therapy", the implant to
+"iStent inject W" and the company to Glaukos (all editable). No biometry is needed. **Prepare email** attaches the filled form only (the sticker photo is
+not sent). The MRN is taken from the sticker's barcode; only if the barcode can't be read does it use the printed digits (and tells you to check every digit). The name is read from the printed text. Tutoplast and iStent each have their own email text in Settings.
 
-Switching between the Toric lens and Tutoplast tabs carries the patient's MRN, name, eye, VMO surgeon and surgery date across. **Next patient** clears both tabs.
+Switching between the Toric lens and Tutoplast / iStent tabs carries the patient's MRN, name, eye, VMO surgeon and surgery date across. **Next patient** clears both tabs.
 
 **No patient data is stored.** The photo, OCR text and fields stay in memory only and
 are cleared by "Next patient" or by closing the app. Text recognition runs on the

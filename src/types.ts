@@ -23,8 +23,12 @@ export interface RequestData {
   surgeryDate: string;
 }
 
-/** A tutoplast order: patient from a sticker, no biometry or lens. Memory only, like RequestData. */
+/** The orders made on the sticker tab. */
+export type OrderKind = 'tutoplast' | 'istent';
+
+/** A tutoplast or iStent order: patient from a sticker, no biometry or lens. Memory only, like RequestData. */
 export interface TutoplastRequest {
+  kind: OrderKind;
   eye: Eye;
   name: string;
   mrn: string;
@@ -51,4 +55,8 @@ export interface Settings {
   emailBody: string;
   /** Same, for tutoplast orders. */
   tutoplastEmailBody: string;
+  /** Same, for iStent orders. */
+  istentEmailBody: string;
+  /** Last order type used on the sticker tab. */
+  orderKind: OrderKind;
 }

@@ -6,7 +6,7 @@ const req: RequestData = {
   eye: 'Right', name: 'CITIZEN, Jane', mrn: '1234567',
   astKRight: '2.39', astKLeft: '1.10', vmo: '', surgeryDate: '', lensModel: 'ZCU300', lensPower: '22', company: 'J&J', diagnosis: 'High cyl / astigmatism >2',
 };
-const settings: Settings = { recipients: '', clinicianName: 'Thomas Desmond', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '' };
+const settings: Settings = { recipients: '', clinicianName: 'Thomas Desmond', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' };
 
 describe('email', () => {
   it('builds subject, body and attachment names', () => {

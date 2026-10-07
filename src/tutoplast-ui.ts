@@ -1,4 +1,5 @@
-// The Tutoplast tab: patient sticker photo -> name/MRN -> order form + email.
+// The Tutoplast / iStent tab: patient sticker photo -> name/MRN -> order form + email.
+// Both orders share everything but the implant, company, diagnosis and email text (ORDER_KINDS).
 // Like the toric tab, patient data lives only in these variables and the form fields.
 
 import { attachmentStem, tutoplastBody, tutoplastSubject } from './email';
@@ -8,8 +9,8 @@ import { saveSettings } from './settings';
 import { shareEmail, type EmailDraft } from './share';
 import { NEXT_PATIENT, type PatientDetails } from './patient';
 import { initStickerStep, stickerName } from './sticker-ui';
-import { DEFAULT_COMPANY, DEFAULT_IMPLANT, OTHER_DIAGNOSIS, TUTOPLAST_DIAGNOSES, diagnosisText, validateTutoplast } from './tutoplast';
-import type { Eye, Settings, TutoplastRequest } from './types';
+import { ORDER_KINDS, OTHER_DIAGNOSIS, diagnosisText, validateTutoplast } from './tutoplast';
+import type { Eye, OrderKind, Settings, TutoplastRequest } from './types';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const input = (id: string) => $<HTMLInputElement>(id);
@@ -37,21 +38,42 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
 
   let prepared: { key: string; draft: EmailDraft } | undefined;
 
-  el.diagnosis.replaceChildren(
-    new Option('Choose…', ''),
-    ...TUTOPLAST_DIAGNOSES.map((d) => new Option(d, d)),
-    new Option('Other (enter text)', OTHER_DIAGNOSIS),
-  );
+  const kindRadios = document.querySelectorAll<HTMLInputElement>('input[name="tp-kind"]');
+  const selectedKind = (): OrderKind => (document.querySelector<HTMLInputElement>('input[name="tp-kind"]:checked')?.value as OrderKind) ?? 'tutoplast';
+
+  /** Sets the implant, company and diagnosis choices for the order type; a single preset is preselected. */
+  function applyKind(): void {
+    const { implant, company, diagnoses } = ORDER_KINDS[selectedKind()];
+    el.diagnosis.replaceChildren(
+      ...(diagnoses.length > 1 ? [new Option('Choose…', '')] : []),
+      ...diagnoses.map((d) => new Option(d, d)),
+      new Option('Other (enter text)', OTHER_DIAGNOSIS),
+    );
+    el.diagnosis.value = diagnoses.length > 1 ? '' : diagnoses[0];
+    el.other.value = ''; // free text may name the patient, so it is never saved
+    el.implant.value = implant;
+    el.company.value = company;
+  }
+
+  const kind = settings.orderKind in ORDER_KINDS ? settings.orderKind : 'tutoplast';
+  kindRadios.forEach((r) => (r.checked = r.value === kind));
+  for (const radio of kindRadios) {
+    radio.addEventListener('change', () => {
+      applyKind();
+      saveSettings({ ...settings, orderKind: (settings.orderKind = selectedKind()) });
+    });
+  }
+  applyKind();
   el.vmo.value = settings.vmo;
-  el.implant.value = DEFAULT_IMPLANT;
-  el.company.value = DEFAULT_COMPANY;
 
   const selectedEye = () => document.querySelector<HTMLInputElement>('input[name="tp-eye"]:checked')?.value as Eye | undefined;
 
   function currentRequest(): TutoplastRequest | undefined {
     const eye = selectedEye();
     if (!eye) return undefined;
+    const kind = selectedKind();
     return {
+      kind,
       eye,
       mrn: el.mrn.value.trim(),
       name: el.name.value.trim(),
@@ -59,7 +81,7 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
       surgeryDate: el.surgeryDate.value,
       implant: el.implant.value.trim(),
       company: el.company.value.trim(),
-      diagnosis: diagnosisText(el.diagnosis.value, el.other.value),
+      diagnosis: diagnosisText(kind, el.diagnosis.value, el.other.value),
     };
   }
 
@@ -114,7 +136,7 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
       to: settings.recipients,
       subject: tutoplastSubject(req),
       body: tutoplastBody(settings, req),
-      files: [new File([new Uint8Array(pdf)], `High_cost_order_tutoplast_${attachmentStem(req)}.pdf`, { type: 'application/pdf' })],
+      files: [new File([new Uint8Array(pdf)], `High_cost_order_${req.kind}_${attachmentStem(req)}.pdf`, { type: 'application/pdf' })],
     };
   }
 
@@ -123,10 +145,7 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     prepared = undefined;
     sticker.reset();
     for (const i of [el.mrn, el.name, el.surgeryDate]) i.value = '';
-    el.diagnosis.value = '';
-    el.other.value = ''; // free text may name the patient, so it is never saved
-    el.implant.value = DEFAULT_IMPLANT;
-    el.company.value = DEFAULT_COMPANY;
+    applyKind(); // keeps the order type, resets its implant, company and diagnosis
     document.querySelectorAll<HTMLInputElement>('input[name="tp-eye"]').forEach((r) => (r.checked = false));
     el.sendStatus.textContent = '';
     refresh();
