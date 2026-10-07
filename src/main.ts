@@ -9,6 +9,8 @@ import { readPrintout } from './ocr';
 import { DEFAULT_DIAGNOSIS, TEMPLATE_URL, fillOrderForm } from './pdf';
 import { loadSettings, saveSettings } from './settings';
 import { parseRecipients } from './recipients';
+import { NEXT_PATIENT, type PatientDetails } from './patient';
+import { initStickerStep, stickerName } from './sticker-ui';
 import { initTutoplast } from './tutoplast-ui';
 import { shareEmail, type EmailDraft } from './share';
 import type { Eye, RequestData } from './types';
@@ -35,9 +37,8 @@ const el = {
   mrn: input('mrn'),
   mrnWarning: $('mrn-warning'),
   name: input('name'),
-  dob: input('dob'),
-  astK: input('astk'),
-  axis: input('axis'),
+  astKRight: input('astk-re'),
+  astKLeft: input('astk-le'),
   vmo: input('vmo'),
   surgeryDate: input('surgery-date'),
   diagnosis: $<HTMLTextAreaElement>('diagnosis'),
@@ -53,13 +54,16 @@ const el = {
   send: $<HTMLButtonElement>('send'),
   sendStatus: $('send-status'),
 };
-const patientInputs = [el.mrn, el.name, el.dob, el.astK, el.axis, el.surgeryDate, el.lensPower, el.lensModelOther, el.company];
+const patientInputs = [el.mrn, el.name, el.astKRight, el.astKLeft, el.surgeryDate, el.lensPower, el.lensModelOther, el.company];
 
 // Patient state lives only in these variables and the form fields.
 let photo: Blob | undefined;
 let extras: { blob: Blob; url: string }[] = [];
 let previewUrl: string | undefined;
 let extracted: Extracted | undefined;
+/** Warnings shown under the MRN field: about the sticker read, and about the biometry's MRN. */
+let mrnWarnings: { sticker?: string; biometry?: string } = {};
+let stickerMrn = '';
 let lensSuggestions: LensSuggestions | undefined;
 const lensMemory = new LensMemory();
 let photoToken = 0;
@@ -187,21 +191,26 @@ async function onPhoto(file: File): Promise<void> {
       document.querySelector<HTMLInputElement>(`input[name="eye"][value="${guess.eye}"]`)!.checked = true;
       eyeNote = ` ${guess.eye.toUpperCase()} eye selected: ${guess.reason}. Change it if that's wrong.`;
     }
-    el.mrn.value = extracted.mrn;
-    el.name.value = joinName(extracted.surname, extracted.firstName);
-    el.dob.value = extracted.dob;
-    el.mrnWarning.hidden = !extracted.mrnUncertain;
+    // The patient sticker is the main source of name and MRN; the biometry only fills what is still empty.
+    const filled: string[] = [];
+    if (!el.mrn.value && extracted.mrn) {
+      el.mrn.value = extracted.mrn;
+      filled.push('MRN');
+      if (extracted.mrnUncertain) mrnWarnings.biometry = 'The MRN read differently on two passes. Check every digit against the printout.';
+    }
+    if (!el.name.value && extracted.surname) {
+      el.name.value = joinName(extracted.surname, extracted.firstName);
+      filled.push('name');
+    }
+    // A different MRN on the printout than on the sticker may mean the wrong patient (or a misread digit).
+    if (stickerMrn && extracted.mrn && extracted.mrn !== stickerMrn) mrnWarnings.biometry = mrnMismatch(extracted.mrn);
+    showMrnWarning();
     fillAstK();
     showLens();
-    const missing = [
-      !extracted.mrn && 'MRN',
-      !extracted.surname && 'name',
-      !extracted.dob && 'date of birth',
-    ].filter(Boolean);
+    const missing = [!el.mrn.value && 'MRN', !el.name.value && 'name'].filter(Boolean);
     setOcrStatus(
-      missing.length
-        ? `Couldn't read the ${missing.join(', ')}. Fill it in by hand.`
-        : 'Details read. Check them against the printout.',
+      (filled.length ? `${filled.join(' and ')} filled in from the biometry. ` : '') +
+        (missing.length ? `Still missing: ${missing.join(' and ')}. Fill it in by hand.` : 'Details read. Check them against the printout.'),
     );
     if (eyeNote) el.ocrStatus.textContent += eyeNote;
   } catch (e) {
@@ -210,13 +219,37 @@ async function onPhoto(file: File): Promise<void> {
   refresh();
 }
 
-/** Shows the astigmatism read for the selected eye (the printout has both). */
+const mrnMismatch = (biometryMrn: string) => `The MRN on the biometry (${biometryMrn}) differs from the sticker's. Check it is the same patient.`;
+
+function showMrnWarning(): void {
+  const text = mrnWarnings.biometry ?? mrnWarnings.sticker ?? '';
+  el.mrnWarning.textContent = text;
+  el.mrnWarning.hidden = !text;
+}
+
+const sticker = initStickerStep(
+  { camera: input('st-camera'), library: input('st-library'), preview: $<HTMLImageElement>('st-preview'), status: $('st-status') },
+  (read) => {
+    // The sticker is the preferred source, so a new one replaces both fields, even with blanks:
+    // keeping the previous patient's name after a failed read would be worse than an empty field.
+    // (Retaking the biometry afterwards fills any gap.)
+    el.mrn.value = read.mrn;
+    el.name.value = stickerName(read);
+    stickerMrn = read.mrn;
+    mrnWarnings = {
+      sticker: read.mrnSource === 'text' ? "The barcode couldn't be read, so the MRN is from the printed digits. Check every digit." : undefined,
+      // If the biometry was read first, compare its MRN with the sticker's.
+      biometry: read.mrn && extracted?.mrn && extracted.mrn !== read.mrn ? mrnMismatch(extracted.mrn) : undefined,
+    };
+    showMrnWarning();
+    refresh();
+  },
+);
+
+/** Shows the astigmatism read for each eye (the printout has both). */
 function fillAstK(): void {
-  const eye = selectedEye();
-  const k = eye && extracted?.astK[eye];
-  if (!eye || !extracted) return refresh();
-  el.astK.value = k?.power ?? '';
-  el.axis.value = k?.axis ?? '';
+  el.astKRight.value = extracted?.astK.Right?.power ?? '';
+  el.astKLeft.value = extracted?.astK.Left?.power ?? '';
   refresh();
 }
 
@@ -308,9 +341,8 @@ function currentRequest(): RequestData | undefined {
     eye,
     mrn: el.mrn.value.trim(),
     name: el.name.value.trim(),
-    dob: el.dob.value.trim(),
-    astK: el.astK.value.trim(),
-    astAxis: el.axis.value.trim(),
+    astKRight: el.astKRight.value.trim(),
+    astKLeft: el.astKLeft.value.trim(),
     vmo: el.vmo.value.trim(),
     surgeryDate: el.surgeryDate.value,
     diagnosis: el.diagnosis.value.trim(),
@@ -335,10 +367,7 @@ function refresh(): void {
 }
 
 document.querySelectorAll('input[name="eye"]').forEach((r) =>
-  r.addEventListener('change', () => {
-    fillAstK();
-    showLens();
-  }),
+  r.addEventListener('change', showLens),
 );
 document.querySelectorAll<HTMLInputElement>('input[name="platform"]').forEach((r) =>
   r.addEventListener('change', () => {
@@ -360,7 +389,10 @@ el.lensPower.addEventListener('change', () => {
   rememberLens();
 });
 selectPlatform(settings.lensPlatform);
-el.mrn.addEventListener('input', () => (el.mrnWarning.hidden = true));
+el.mrn.addEventListener('input', () => {
+  mrnWarnings = {};
+  showMrnWarning();
+});
 $('tab-toric').addEventListener('input', refresh);
 
 // Fetch the form template up front so the share call stays within the tap's user activation.
@@ -369,15 +401,47 @@ const template = fetch(TEMPLATE_URL).then((r) => {
   return r.arrayBuffer();
 });
 
-initTutoplast({ settings, template });
+const tutoplast = initTutoplast({ settings, template });
 
-const tabs = { toric: $('tab-toric'), tutoplast: $('tab-tutoplast') };
-for (const [name, panel] of Object.entries(tabs)) {
-  const button = $(`tab-${name}-btn`);
-  button.addEventListener('click', () => {
-    for (const [other, p] of Object.entries(tabs)) {
-      p.hidden = p !== panel;
-      $(`tab-${other}-btn`).setAttribute('aria-selected', String(p === panel));
+function getDetails(): PatientDetails {
+  return { mrn: el.mrn.value.trim(), name: el.name.value.trim(), eye: selectedEye(), vmo: el.vmo.value.trim(), surgeryDate: el.surgeryDate.value };
+}
+
+/** Fills in what the other tab has; blank values leave this tab's own untouched. */
+function setDetails(d: PatientDetails): void {
+  if (d.mrn && d.mrn !== el.mrn.value) {
+    el.mrn.value = d.mrn;
+    stickerMrn = d.mrn;
+    mrnWarnings = {};
+    showMrnWarning();
+  }
+  if (d.name) el.name.value = d.name;
+  if (d.vmo) el.vmo.value = d.vmo;
+  if (d.surgeryDate) el.surgeryDate.value = d.surgeryDate;
+  if (d.eye && d.eye !== selectedEye()) {
+    document.querySelector<HTMLInputElement>(`input[name="eye"][value="${d.eye}"]`)!.checked = true;
+    showLens();
+  } else {
+    refresh();
+  }
+}
+
+
+const tabs = {
+  toric: { panel: $('tab-toric'), get: getDetails, set: setDetails },
+  tutoplast: { panel: $('tab-tutoplast'), get: tutoplast.getDetails, set: tutoplast.setDetails },
+};
+let activeTab: keyof typeof tabs = 'toric';
+for (const name of Object.keys(tabs) as (keyof typeof tabs)[]) {
+  $(`tab-${name}-btn`).addEventListener('click', () => {
+    if (name !== activeTab) {
+      // Same patient on the other tab: carry over what is filled in here.
+      tabs[name].set(tabs[activeTab].get());
+      activeTab = name;
+    }
+    for (const [other, tab] of Object.entries(tabs)) {
+      tab.panel.hidden = other !== name;
+      $(`tab-${other}-btn`).setAttribute('aria-selected', String(other === name));
     }
     window.scrollTo({ top: 0 });
   });
@@ -429,7 +493,8 @@ async function buildDraft(req: RequestData, photo: Blob, more: Blob[]): Promise<
   };
 }
 
-$('reset').addEventListener('click', () => {
+$('reset').addEventListener('click', () => document.dispatchEvent(new Event(NEXT_PATIENT)));
+document.addEventListener(NEXT_PATIENT, () => {
   photoToken++;
   photo = undefined;
   extracted = undefined;
@@ -445,7 +510,10 @@ $('reset').addEventListener('click', () => {
   el.extrasStatus.hidden = true;
   for (const i of patientInputs) i.value = '';
   el.diagnosis.value = DEFAULT_DIAGNOSIS; // free text may name the patient, so it is never saved
-  el.mrnWarning.hidden = true;
+  mrnWarnings = {};
+  stickerMrn = '';
+  showMrnWarning();
+  sticker.reset();
   lensMemory.clear();
   document.querySelectorAll<HTMLInputElement>('input[name="eye"]').forEach((r) => (r.checked = false));
   selectPlatform(settings.lensPlatform);

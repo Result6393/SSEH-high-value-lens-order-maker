@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, claude/magical-euler-re42pr]
+    branches: [main, claude/magical-euler-re42pr, claude/magical-albattani-zppxo2]
   workflow_dispatch:
 
 permissions:

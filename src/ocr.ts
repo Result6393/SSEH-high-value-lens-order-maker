@@ -6,10 +6,8 @@ import { decodeBarcode } from './barcode';
 import { extractSticker, mrnFromBarcode, stickerBand, type Sticker } from './sticker';
 
 export interface StickerRead extends Sticker {
-  /** The MRN came from the barcode. */
-  mrnFromBarcode: boolean;
-  /** The barcode and the printed number were both read and differ. */
-  mrnConflict: boolean;
+  /** Where `mrn` came from: the barcode, else the printed digits (less reliable), else nothing. */
+  mrnSource: 'barcode' | 'text' | '';
 }
 
 export interface PrintoutRead {
@@ -20,6 +18,15 @@ export interface PrintoutRead {
 }
 
 let worker: Promise<Worker> | undefined;
+
+// One shared worker with per-call parameters (digits-only whitelist, progress callback), so reads
+// must not overlap: e.g. a sticker photo taken while the biometry is still being read.
+let queue: Promise<unknown> = Promise.resolve();
+function serial<T>(job: () => Promise<T>): Promise<T> {
+  const run = queue.then(job, job);
+  queue = run.catch(() => {});
+  return run;
+}
 let progress: (p: number) => void = () => {};
 
 // All OCR assets are served from our own origin (copied into public/ocr by
@@ -42,7 +49,11 @@ function getWorker(): Promise<Worker> {
  * "Physician"), which reads small identifiers more reliably; then each lens
  * power table, upscaled and read as digits only.
  */
-export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<PrintoutRead> {
+export function readPrintout(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<PrintoutRead> {
+  return serial(() => readPrintoutNow(image, onProgress));
+}
+
+async function readPrintoutNow(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<PrintoutRead> {
   const w = await getWorker();
   // SINGLE_BLOCK is tesseract.js's default; AUTO splits labels from their values.
   await w.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: '' });
@@ -81,16 +92,21 @@ export async function readPrintout(image: HTMLCanvasElement, onProgress: (stage:
 }
 
 /**
- * Reads a patient sticker: the whole photo, then a tight crop of the sticker for a
- * cleaner read. If that doesn't find both MRN and name, the photo is tried turned a
+ * Reads a patient sticker: the MRN from its barcode (from the printed digits only if the
+ * barcode can't be read), the name from the text: the whole photo, then a tight crop of the sticker for a
+ * cleaner read. If that doesn't find the name, the photo is tried turned a
  * quarter either way (stickers are often photographed sideways), keeping the best read.
  */
-export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<StickerRead> {
+export function readSticker(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<StickerRead> {
+  return serial(() => readStickerNow(image, onProgress));
+}
+
+async function readStickerNow(image: HTMLCanvasElement, onProgress: (stage: string) => void): Promise<StickerRead> {
   const w = await getWorker();
   await w.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: '' });
-  let best: Sticker = { mrn: '', surname: '', firstName: '', dob: '' };
+  let best: Sticker = { mrn: '', surname: '', firstName: '' };
   let barcodeMrn = '';
-  const score = (s: Sticker) => Number(!!s.mrn) + Number(!!s.surname) + Number(!!s.dob) / 2;
+  const score = (s: Sticker) => Number(!!s.surname) + Number(!!s.firstName) / 2 + Number(!!s.mrn) / 4;
   for (const turns of [0, 1, 3]) {
     const img = turns ? rotate(image, turns) : image;
     const label = turns ? ' (turned)' : '';
@@ -106,10 +122,10 @@ export async function readSticker(image: HTMLCanvasElement, onProgress: (stage: 
     }
     const sticker = extractSticker(passes);
     if (score(sticker) > score(best)) best = sticker;
-    if ((best.mrn || barcodeMrn) && best.surname) break;
+    if (best.surname) break;
   }
-  // The barcode is the reliable source for the MRN; a differing printed number is flagged.
-  return { ...best, mrn: barcodeMrn || best.mrn, mrnFromBarcode: !!barcodeMrn, mrnConflict: !!barcodeMrn && !!best.mrn && barcodeMrn !== best.mrn };
+  const mrn = barcodeMrn || best.mrn;
+  return { ...best, mrn, mrnSource: barcodeMrn ? 'barcode' : mrn ? 'text' : '' };
 }
 
 const linesOf = (page: Page): Line[] => (page.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines));
