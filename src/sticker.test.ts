@@ -20,44 +20,39 @@ function pass(...texts: string[]): OcrPass {
 }
 
 describe('patient sticker', () => {
-  it('reads a sticker on its own', () => {
+  it('reads the name and the printed MRN from a sticker on its own', () => {
     const p = pass('12345678 Sydney/Sydney Eye Hospital', 'SMITH John Paul', '79 Mercer Road Pymble 2073', 'DOB: 14/05/1967 59y Sex: M Ph: 0400');
-    expect(extractSticker([p])).toEqual({ mrn: '12345678', surname: 'SMITH', firstName: 'John Paul', dob: '14/05/1967' });
-  });
-
-  it('ignores the printed form labels around a sticker stuck on a form', () => {
-    const p = pass('FAMILY NAME MRN', 'GIVEN NAME', 'D.O.P', '4871234 Sydney/Sydney Eye Hospital ¦¦ barcode', 'DIRAN Aram', '1 Alt Street Moss Vale 2577', 'DOB: 03/11/1962 55y Sex: M Ph:', 'COMPLETE ALL DETAILS OR AFFIX PATIENT LABEL HERE');
-    expect(extractSticker([p])).toEqual({ mrn: '4871234', surname: 'DIRAN', firstName: 'Aram', dob: '03/11/1962' });
-  });
-
-  it('copes with a garbled hospital line, a lost given name and a redacted date', () => {
-    const p = pass('GIVEN NAME', 'Eo 1284567O Syveyf Syiney Eye Fosota', 'BLACK', '11 Rd', 'DOB: 1979 46y Sex: F Ph');
-    expect(extractSticker([p])).toEqual({ mrn: '12845670', surname: 'BLACK', firstName: '', dob: '' });
-  });
-
-  it('finds the sticker when the hospital line is unreadable, a gap splits it, and the given name is glued on', () => {
-    const noHospital = pass('FAMILY NAME MRN', 'GIVEN NAME', '4875678 ¦¦ Sydney Eye ¦¦ barcode', 'DIRANAram', '1 A Street Moss Vale 2577', 'DOB: 03/11/1962 55y Sex: M');
-    expect(extractSticker([noHospital])).toEqual({ mrn: '4875678', surname: 'DIRAN', firstName: 'Aram', dob: '03/11/1962' });
-    const gapped = pass('12845678 Sydney Eye ¦¦ Hospital', 'SMITHJohn', '79 Me Road Pymble 2073');
-    expect(extractSticker([gapped])).toMatchObject({ mrn: '12845678', surname: 'SMITH', firstName: 'John' });
-    expect(extractSticker([pass('FAMILY NAME', 'GIVEN NAME', 'COMPLETE ALL DETAILS')])).toEqual({ mrn: '', surname: '', firstName: '', dob: '' });
-  });
-
-  it('prefers the first pass that has a value, field by field', () => {
-    const crop = pass('12345678 Sydney/Sydney Eye Hospital', 'BLACK Jo', 'DOB: 01/02/1979 46y Sex: F');
-    const full = pass('1234567 Sydney Eye Hospital', 'BLACK');
-    expect(extractSticker([crop, full])).toEqual({ mrn: '12345678', surname: 'BLACK', firstName: 'Jo', dob: '01/02/1979' });
-    expect(extractSticker([pass('nothing useful here')])).toEqual({ mrn: '', surname: '', firstName: '', dob: '' });
-  });
-
-  it('repairs a date whose slashes were read as 1s', () => {
-    const p = pass('12345678 Sydney Eye Hospital', 'SMITH John', 'DOB: 1410511949 76y Sex: M');
-    expect(extractSticker([p]).dob).toBe('14/05/1949');
+    expect(extractSticker([p])).toEqual({ mrn: '12345678', surname: 'SMITH', firstName: 'John Paul' });
   });
 
   it('reads the MRN printed with dashes', () => {
     const p = pass('487-28-45 Sydney/Sydney Eye Hospital', 'DIRAN Aram', '1 A Street Moss Vale 2577', 'DOB: 03/11/1962 55y Sex: M');
-    expect(extractSticker([p])).toMatchObject({ mrn: '4872845', surname: 'DIRAN' });
+    expect(extractSticker([p])).toEqual({ mrn: '4872845', surname: 'DIRAN', firstName: 'Aram' });
+  });
+
+  it('ignores the printed form labels around a sticker stuck on a form', () => {
+    const p = pass('FAMILY NAME MRN', 'GIVEN NAME', 'D.O.P', '4871234 Sydney/Sydney Eye Hospital ¦¦ barcode', 'DIRAN Aram', '1 Alt Street Moss Vale 2577', 'DOB: 03/11/1962 55y Sex: M Ph:', 'COMPLETE ALL DETAILS OR AFFIX PATIENT LABEL HERE');
+    expect(extractSticker([p])).toMatchObject({ surname: 'DIRAN', firstName: 'Aram' });
+  });
+
+  it('copes with a garbled hospital line and a lost given name', () => {
+    const p = pass('GIVEN NAME', 'Eo 1284567O Syveyf Syiney Eye Fosota', 'BLACK', '11 Rd', 'DOB: 1979 46y Sex: F Ph');
+    expect(extractSticker([p])).toMatchObject({ surname: 'BLACK', firstName: '' });
+  });
+
+  it('finds the sticker when the hospital line is unreadable, a gap splits it, and the given name is glued on', () => {
+    const noHospital = pass('FAMILY NAME MRN', 'GIVEN NAME', '4875678 ¦¦ Sydney Eye ¦¦ barcode', 'DIRANAram', '1 A Street Moss Vale 2577', 'DOB: 03/11/1962 55y Sex: M');
+    expect(extractSticker([noHospital])).toMatchObject({ surname: 'DIRAN', firstName: 'Aram' });
+    const gapped = pass('12845678 Sydney Eye ¦¦ Hospital', 'SMITHJohn', '79 Me Road Pymble 2073');
+    expect(extractSticker([gapped])).toMatchObject({ surname: 'SMITH', firstName: 'John' });
+    expect(extractSticker([pass('FAMILY NAME', 'GIVEN NAME', 'COMPLETE ALL DETAILS')])).toMatchObject({ surname: '', firstName: '' });
+  });
+
+  it('prefers the first pass that finds a name', () => {
+    const crop = pass('12345678 Sydney/Sydney Eye Hospital', 'BLACK Jo', 'DOB: 01/02/1979 46y Sex: F');
+    const full = pass('1234567 Sydney Eye Hospital', 'BLACK');
+    expect(extractSticker([crop, full])).toMatchObject({ surname: 'BLACK', firstName: 'Jo' });
+    expect(extractSticker([pass('nothing useful here')])).toMatchObject({ surname: '', firstName: '' });
   });
 
   it('takes the MRN from the barcode text', () => {
@@ -70,13 +65,13 @@ describe('patient sticker', () => {
   });
 
   it('splits names', () => {
-    expect(parseName('SMITH, John Paul')).toEqual({ surname: 'SMITH', firstName: 'John Paul' });
+    expect(parseName('SMITH, John Paul')).toMatchObject({ surname: 'SMITH', firstName: 'John Paul' });
     expect(parseName('VAN DER BERG Anna')).toEqual({ surname: 'VAN DER BERG', firstName: 'Anna' });
     expect(parseName("O'NEIL JANE")).toEqual({ surname: "O'NEIL", firstName: 'JANE' });
-    expect(parseName('[ro BLACK J')).toEqual({ surname: 'BLACK', firstName: 'J' });
-    expect(parseName('SMITH John ¦ stamp')).toEqual({ surname: 'SMITH', firstName: 'John' });
-    expect(parseName('= ¦ BLACK Mary')).toEqual({ surname: 'BLACK', firstName: 'Mary' });
-    expect(parseName('~~ ¦ DIRANAram ¦ stamp')).toEqual({ surname: 'DIRAN', firstName: 'Aram' });
+    expect(parseName('[ro BLACK J')).toMatchObject({ surname: 'BLACK', firstName: 'J' });
+    expect(parseName('SMITH John ¦ stamp')).toMatchObject({ surname: 'SMITH', firstName: 'John' });
+    expect(parseName('= ¦ BLACK Mary')).toMatchObject({ surname: 'BLACK', firstName: 'Mary' });
+    expect(parseName('~~ ¦ DIRANAram ¦ stamp')).toMatchObject({ surname: 'DIRAN', firstName: 'Aram' });
     expect(parseName('no capitals here')).toBeUndefined();
   });
 

@@ -52,11 +52,11 @@
       <label>Contact number
         <input id="contact" type="tel" autocomplete="tel" />
       </label>
-      <label>Email text
+      <label>Toric lens email text
         <textarea id="email-body" rows="8" autocomplete="off" spellcheck="true"></textarea>
       </label>
       <p class="hint">Blank lines are kept. <code>{patient}</code>, <code>{mrn}</code> and <code>{lens}</code> are replaced with the patient's name, MRN and lens (e.g. ZCU300 +22.0D), and <code>{name}</code> with your first name.</p>
-      <button id="email-reset" type="button">Reset email text to default</button>
+      <button id="email-reset" type="button">Reset toric lens email text to default</button>
       <label>Tutoplast email text
         <textarea id="tp-email-body" rows="8" autocomplete="off" spellcheck="true"></textarea>
       </label>
@@ -77,8 +77,23 @@
     </nav>
 
     <div id="tab-toric" class="tab" role="tabpanel">
+    <section id="step-sticker">
+      <h2>1. Patient sticker</h2>
+      <p class="hint" style="margin-top:0">Photograph the patient sticker for the name and MRN. The biometry photo below fills in anything the sticker missed.</p>
+      <div class="row">
+        <label class="button primary">Take photo
+          <input id="st-camera" type="file" accept="image/*" capture="environment" hidden />
+        </label>
+        <label class="button">Choose photo
+          <input id="st-library" type="file" accept="image/*" hidden />
+        </label>
+      </div>
+      <img id="st-preview" alt="Patient sticker photo" hidden />
+      <p id="st-status" class="hint" hidden></p>
+    </section>
+
     <section id="step-photo">
-      <h2>1. Biometry photo</h2>
+      <h2>2. Biometry photo</h2>
       <div class="row">
         <label class="button primary">Take photo
           <input id="camera" type="file" accept="image/*" capture="environment" hidden />
@@ -105,19 +120,13 @@
     </section>
 
     <section id="step-details">
-      <h2>2. Operative eye</h2>
-      <fieldset class="eye">
-        <label><input type="radio" name="eye" value="Right" /> Right (OD)</label>
-        <label><input type="radio" name="eye" value="Left" /> Left (OS)</label>
-      </fieldset>
       <h2>3. Check details</h2>
       <label>MRN <input id="mrn" type="text" autocomplete="off" /></label>
-      <p id="mrn-warning" class="warning" hidden>The MRN read differently on two passes. Check every digit against the printout.</p>
+      <p id="mrn-warning" class="warning" hidden></p>
       <label>Name <input id="name" type="text" autocomplete="off" /></label>
-      <label>Date of birth (dd/mm/yyyy) <input id="dob" type="text" inputmode="numeric" autocomplete="off" /></label>
       <div class="row">
-        <label>Ast. K (D) <input id="astk" type="text" inputmode="decimal" autocomplete="off" /></label>
-        <label>Axis (°) <input id="axis" type="text" inputmode="numeric" autocomplete="off" /></label>
+        <label>Ast. K RE (D) <input id="astk-re" type="text" inputmode="decimal" autocomplete="off" /></label>
+        <label>Ast. K LE (D) <input id="astk-le" type="text" inputmode="decimal" autocomplete="off" /></label>
       </div>
       <p id="ast-warning" class="warning" hidden></p>
       <label>VMO surgeon <input id="vmo" type="text" autocomplete="off" /></label>
@@ -125,8 +134,16 @@
       <label>Diagnosis (on the order form) <textarea id="diagnosis" rows="2" autocomplete="off"></textarea></label>
     </section>
 
+    <section id="step-eye">
+      <h2>4. Operative eye</h2>
+      <fieldset class="eye">
+        <label><input type="radio" name="eye" value="Right" /> Right (OD)</label>
+        <label><input type="radio" name="eye" value="Left" /> Left (OS)</label>
+      </fieldset>
+    </section>
+
     <section id="step-lens">
-      <h2>4. Lens</h2>
+      <h2>5. Lens</h2>
       <fieldset class="seg">
         <label><input type="radio" name="platform" value="ZCU" /> Tecnis ZCU</label>
         <label><input type="radio" name="platform" value="CNA0T" /> Clareon</label>
@@ -145,7 +162,7 @@
     </section>
 
     <section id="step-send">
-      <h2>5. Send</h2>
+      <h2>6. Send</h2>
       <ul id="problems" class="problems"></ul>
       <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. Your recipients are copied (separated by semicolons), so paste them into To.</p>
       <button id="send" class="primary" type="button" disabled>Prepare email</button>
@@ -175,22 +192,19 @@
       </section>
 
       <section>
-        <h2>2. Operative eye</h2>
-        <fieldset class="eye">
-          <label><input type="radio" name="tp-eye" value="Right" /> Right (OD)</label>
-          <label><input type="radio" name="tp-eye" value="Left" /> Left (OS)</label>
-        </fieldset>
-        <h2>3. Check details</h2>
+        <h2>2. Check details</h2>
         <label>MRN <input id="tp-mrn" type="text" autocomplete="off" /></label>
-        <p id="tp-mrn-warning" class="warning" hidden>The barcode and the printed number differ. Check every digit against the sticker.</p>
         <label>Name <input id="tp-name" type="text" autocomplete="off" /></label>
-        <label>Date of birth (dd/mm/yyyy) <input id="tp-dob" type="text" inputmode="numeric" autocomplete="off" /></label>
         <label>VMO surgeon <input id="tp-vmo" type="text" autocomplete="off" /></label>
         <label>Proposed surgery date (optional) <input id="tp-surgery-date" type="date" /></label>
       </section>
 
       <section>
-        <h2>4. Diagnosis</h2>
+        <h2>3. Operative eye and diagnosis</h2>
+        <fieldset class="eye">
+          <label><input type="radio" name="tp-eye" value="Right" /> Right (OD)</label>
+          <label><input type="radio" name="tp-eye" value="Left" /> Left (OS)</label>
+        </fieldset>
         <label>Diagnosis (on the order form)
           <select id="tp-diagnosis"></select>
         </label>
@@ -202,7 +216,7 @@
       </section>
 
       <section>
-        <h2>5. Send</h2>
+        <h2>4. Send</h2>
         <ul id="tp-problems" class="problems"></ul>
         <p class="hint">Opens the share sheet: choose <strong>Outlook</strong>. Your recipients are copied (separated by semicolons), so paste them into To.</p>
         <button id="tp-send" class="primary" type="button" disabled>Prepare email</button>

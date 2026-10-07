@@ -2,20 +2,20 @@
 // Both orders share everything but the implant, company, diagnosis and email text (ORDER_KINDS).
 // Like the toric tab, patient data lives only in these variables and the form fields.
 
-import { attachmentStem, joinName, tutoplastBody, tutoplastSubject } from './email';
-import { prepareImage } from './image';
-import { readSticker } from './ocr';
+import { attachmentStem, tutoplastBody, tutoplastSubject } from './email';
 import { fillTutoplastForm } from './pdf';
 import { parseRecipients } from './recipients';
 import { saveSettings } from './settings';
 import { shareEmail, type EmailDraft } from './share';
+import { NEXT_PATIENT, type PatientDetails } from './patient';
+import { initStickerStep, stickerName } from './sticker-ui';
 import { ORDER_KINDS, OTHER_DIAGNOSIS, diagnosisText, validateTutoplast } from './tutoplast';
 import type { Eye, OrderKind, Settings, TutoplastRequest } from './types';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const input = (id: string) => $<HTMLInputElement>(id);
 
-export function initTutoplast(opts: { settings: Settings; template: Promise<ArrayBuffer> }): void {
+export function initTutoplast(opts: { settings: Settings; template: Promise<ArrayBuffer> }): { getDetails(): PatientDetails; setDetails(d: PatientDetails): void } {
   const { settings, template } = opts;
   const el = {
     camera: input('tp-camera'),
@@ -23,9 +23,7 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     preview: $<HTMLImageElement>('tp-preview'),
     ocrStatus: $('tp-ocr-status'),
     mrn: input('tp-mrn'),
-    mrnWarning: $('tp-mrn-warning'),
     name: input('tp-name'),
-    dob: input('tp-dob'),
     vmo: input('tp-vmo'),
     surgeryDate: input('tp-surgery-date'),
     diagnosis: $<HTMLSelectElement>('tp-diagnosis'),
@@ -38,8 +36,6 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     sendStatus: $('tp-send-status'),
   };
 
-  let photoUrl: string | undefined;
-  let token = 0;
   let prepared: { key: string; draft: EmailDraft } | undefined;
 
   const kindRadios = document.querySelectorAll<HTMLInputElement>('input[name="tp-kind"]');
@@ -81,7 +77,6 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
       eye,
       mrn: el.mrn.value.trim(),
       name: el.name.value.trim(),
-      dob: el.dob.value.trim(),
       vmo: el.vmo.value.trim(),
       surgeryDate: el.surgeryDate.value,
       implant: el.implant.value.trim(),
@@ -100,51 +95,16 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     el.problems.replaceChildren(...problems.map((p) => Object.assign(document.createElement('li'), { textContent: p })));
     el.send.disabled = problems.length > 0;
   }
-  el.mrn.addEventListener('input', () => (el.mrnWarning.hidden = true));
   $('tab-tutoplast').addEventListener('input', refresh);
   $('tab-tutoplast').addEventListener('change', refresh);
   // Settings (recipients, name) can change while this tab is open.
   $('settings-done').addEventListener('click', refresh);
 
-  const setStatus = (msg: string) => {
-    el.ocrStatus.textContent = msg;
-    el.ocrStatus.hidden = !msg;
-  };
-
-  for (const picker of [el.camera, el.library]) {
-    picker.addEventListener('change', () => {
-      const file = picker.files?.[0];
-      picker.value = '';
-      if (file) void onPhoto(file);
-    });
-  }
-
-  async function onPhoto(file: File): Promise<void> {
-    const mine = ++token;
-    setStatus('Loading photo…');
-    try {
-      const { ocr, jpeg } = await prepareImage(file);
-      if (mine !== token) return;
-      if (photoUrl) URL.revokeObjectURL(photoUrl);
-      photoUrl = URL.createObjectURL(jpeg); // shown for checking only; the sticker photo is not sent
-      el.preview.src = photoUrl;
-      el.preview.hidden = false;
-      const sticker = await readSticker(ocr, (stage) => mine === token && setStatus(stage));
-      if (mine !== token) return;
-      el.mrn.value = sticker.mrn;
-      el.mrnWarning.hidden = !sticker.mrnConflict;
-      el.name.value = joinName(sticker.surname, sticker.firstName);
-      el.dob.value = sticker.dob;
-      const missing = [!sticker.mrn && 'MRN', !sticker.surname && 'name', !sticker.dob && 'date of birth'].filter(Boolean);
-      setStatus(
-        (missing.length ? `Couldn't read the ${missing.join(', ')}. Fill it in by hand.` : 'Details read. Check them against the sticker.') +
-          (sticker.mrnFromBarcode ? ' MRN from the barcode.' : ''),
-      );
-    } catch (e) {
-      setStatus(`Problem reading the photo: ${(e as Error).message}`);
-    }
+  const sticker = initStickerStep({ camera: el.camera, library: el.library, preview: el.preview, status: el.ocrStatus }, (read) => {
+    el.mrn.value = read.mrn;
+    el.name.value = stickerName(read);
     refresh();
-  }
+  });
 
   el.send.addEventListener('click', async () => {
     const req = currentRequest();
@@ -180,22 +140,31 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     };
   }
 
-  $('tp-reset').addEventListener('click', () => {
-    token++;
+  $('tp-reset').addEventListener('click', () => document.dispatchEvent(new Event(NEXT_PATIENT)));
+  document.addEventListener(NEXT_PATIENT, () => {
     prepared = undefined;
-    if (photoUrl) URL.revokeObjectURL(photoUrl);
-    photoUrl = undefined;
-    el.preview.removeAttribute('src');
-    el.preview.hidden = true;
-    for (const i of [el.mrn, el.name, el.dob, el.surgeryDate]) i.value = '';
-    el.mrnWarning.hidden = true;
+    sticker.reset();
+    for (const i of [el.mrn, el.name, el.surgeryDate]) i.value = '';
     applyKind(); // keeps the order type, resets its implant, company and diagnosis
     document.querySelectorAll<HTMLInputElement>('input[name="tp-eye"]').forEach((r) => (r.checked = false));
-    setStatus('');
     el.sendStatus.textContent = '';
     refresh();
     window.scrollTo({ top: 0 });
   });
 
   refresh();
+
+  return {
+    getDetails: () => ({ mrn: el.mrn.value.trim(), name: el.name.value.trim(), eye: selectedEye(), vmo: el.vmo.value.trim(), surgeryDate: el.surgeryDate.value }),
+    /** Fills in what the other tab has; blank values leave this tab's own untouched. */
+    setDetails(d) {
+      if (d.mrn) el.mrn.value = d.mrn;
+      if (d.name) el.name.value = d.name;
+      if (d.vmo) el.vmo.value = d.vmo;
+      if (d.surgeryDate) el.surgeryDate.value = d.surgeryDate;
+      if (d.eye) document.querySelector<HTMLInputElement>(`input[name="tp-eye"][value="${d.eye}"]`)!.checked = true;
+      prepared = undefined;
+      refresh();
+    },
+  };
 }

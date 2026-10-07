@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { operativeAstK } from './email';
 import { formatPower } from './lenses';
 import type { Eye, RequestData, Settings, TutoplastRequest } from './types';
 
@@ -21,8 +22,6 @@ const CELLS = {
   surgeryDate: [347, 262, 301],
   mrn: [508, 183, 222],
   name: [508, 222, 262],
-  dob: [506, 301, 325],
-  age: [600, 301, 325],
   vmo: [252, 406, 447],
   submittedBy: [258, 447, 478],
   contact: [622, 447, 478],
@@ -31,7 +30,7 @@ const CELLS = {
   eye: [252, 569, 599],
 } as const satisfies Record<string, readonly [number, number, number]>;
 // Max text width per cell, same pixel units.
-const WIDTH = { dateRequested: 74, surgeryDate: 74, mrn: 210, name: 210, dob: 86, age: 118, vmo: 155, submittedBy: 150, contact: 100, lens: 450, company: 450, eye: 470 };
+const WIDTH = { dateRequested: 74, surgeryDate: 74, mrn: 210, name: 210, vmo: 155, submittedBy: 150, contact: 100, lens: 450, company: 450, eye: 470 };
 
 const BLUE = rgb(0, 0.47, 0.83);
 
@@ -39,7 +38,6 @@ const BLUE = rgb(0, 0.47, 0.83);
 interface FormContent {
   mrn: string;
   name: string;
-  dob: string;
   vmo: string;
   surgeryDate: string;
   implant: string;
@@ -50,7 +48,7 @@ interface FormContent {
 }
 
 export function fillOrderForm(template: ArrayBuffer | Uint8Array, req: RequestData, settings: Settings, today: Date): Promise<Uint8Array> {
-  return fillForm(template, { ...req, implant: `${req.lensModel} ${formatPower(req.lensPower)}`, eyeText: eyeLine(req), title: `High cost lens order - toric - ${req.eye} eye` }, settings, today);
+  return fillForm(template, { ...req, implant: `${req.lensModel} ${formatPower(req.lensPower)}`, eyeText: eyeLine({ eye: req.eye, astK: operativeAstK(req) }), title: `High cost lens order - toric - ${req.eye} eye` }, settings, today);
 }
 
 export function fillTutoplastForm(template: ArrayBuffer | Uint8Array, req: TutoplastRequest, settings: Settings, today: Date): Promise<Uint8Array> {
@@ -68,9 +66,6 @@ async function fillForm(template: ArrayBuffer | Uint8Array, form: FormContent, s
   if (form.surgeryDate) put('surgeryDate', formatDate(new Date(`${form.surgeryDate}T00:00`)));
   put('mrn', form.mrn);
   put('name', form.name); // one field for the whole name; it goes in the Surname box
-  put('dob', form.dob);
-  const age = ageOn(form.dob, today);
-  if (age !== undefined) put('age', `Age ${age}`);
   put('vmo', form.vmo);
   put('submittedBy', settings.clinicianName);
   put('contact', settings.contactNumber);
@@ -83,10 +78,10 @@ async function fillForm(template: ArrayBuffer | Uint8Array, form: FormContent, s
   return doc.save();
 }
 
-export function eyeLine(req: { eye: Eye; astK?: string; astAxis?: string }): string {
+export function eyeLine(req: { eye: Eye; astK?: string }): string {
   const eye = `${req.eye.toUpperCase()} EYE (${req.eye === 'Right' ? 'OD' : 'OS'})`;
   if (!req.astK) return eye;
-  return `${eye}   Corneal astigmatism ${req.astK} D${req.astAxis ? ` @ ${req.astAxis}°` : ''}`;
+  return `${eye}   Corneal astigmatism ${req.astK} D`;
 }
 
 function draw(page: PDFPage, font: PDFFont, cell: keyof typeof CELLS, text: string, size: number): void {
@@ -145,13 +140,4 @@ function drawDiagnosis(page: PDFPage, font: PDFFont, text: string): void {
 
 function formatDate(d: Date): string {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-}
-
-export function ageOn(dob: string, today: Date): number | undefined {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dob);
-  if (!m) return undefined;
-  const [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  let age = today.getFullYear() - y;
-  if (today.getMonth() + 1 < mo || (today.getMonth() + 1 === mo && today.getDate() < d)) age--;
-  return age >= 0 && age < 130 ? age : undefined;
 }

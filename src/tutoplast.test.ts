@@ -4,7 +4,7 @@ import { DEFAULT_ISTENT_EMAIL_BODY, DEFAULT_TUTOPLAST_EMAIL_BODY, tutoplastBody,
 import type { Settings, TutoplastRequest } from './types';
 
 const req: TutoplastRequest = {
-  kind: 'tutoplast', eye: 'Left', name: 'CITIZEN, Jane', mrn: '1234567', dob: '01/02/1950', vmo: '', surgeryDate: '',
+  kind: 'tutoplast', eye: 'Left', name: 'CITIZEN, Jane', mrn: '1234567', vmo: '', surgeryDate: '',
   implant: 'Tutoplast', company: 'Tutogen', diagnosis: TUTOPLAST_DIAGNOSES[1],
 };
 const settings: Settings = { recipients: '', clinicianName: 'Dr Jo Bloggs', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' };
