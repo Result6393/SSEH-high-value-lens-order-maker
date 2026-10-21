@@ -11,7 +11,7 @@ import { NEXT_PATIENT, type PatientDetails } from './patient';
 import { initStickerStep, stickerName } from './sticker-ui';
 import { initExtras } from './extras-ui';
 import { showUrgent } from './urgent-ui';
-import { ORDER_KINDS, OTHER_DIAGNOSIS, diagnosisText, validateTutoplast } from './tutoplast';
+import { ORDER_KINDS, OTHER_DIAGNOSIS, diagnosisText, startingImplant, validateTutoplast } from './tutoplast';
 import type { Eye, OrderKind, Settings, TutoplastRequest } from './types';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -34,6 +34,7 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     otherWrap: $('tp-diagnosis-other-wrap'),
     other: $<HTMLTextAreaElement>('tp-diagnosis-other'),
     implant: input('tp-implant'),
+    models: $<HTMLFieldSetElement>('tp-models'),
     company: input('tp-company'),
     problems: $<HTMLUListElement>('tp-problems'),
     send: $<HTMLButtonElement>('tp-send'),
@@ -47,7 +48,23 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
 
   /** Sets the implant, company and diagnosis choices for the order type; a single preset is preselected. */
   function applyKind(): void {
-    const { implant, company, diagnoses } = ORDER_KINDS[selectedKind()];
+    const kind = selectedKind();
+    const { implants, company, diagnoses } = ORDER_KINDS[kind];
+    const implant = startingImplant(kind, settings.implantChoice?.[kind]);
+    // A model switch (e.g. iStent inject W / infinite) when the order type has more than one.
+    el.models.hidden = implants.length < 2;
+    el.models.replaceChildren(
+      ...implants.map((model) => {
+        const radio = Object.assign(document.createElement('input'), { type: 'radio', name: 'tp-model', value: model, checked: model === implant });
+        radio.addEventListener('change', () => {
+          el.implant.value = model;
+          saveSettings({ ...settings, implantChoice: (settings.implantChoice = { ...settings.implantChoice, [kind]: model }) });
+        });
+        const label = document.createElement('label');
+        label.append(radio, ` ${model}`);
+        return label;
+      }),
+    );
     el.diagnosis.replaceChildren(
       ...(diagnoses.length > 1 ? [new Option('Choose…', '')] : []),
       ...diagnoses.map((d) => new Option(d, d)),

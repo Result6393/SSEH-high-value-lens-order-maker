@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ISTENT_DIAGNOSIS, ORDER_KINDS, OTHER_DIAGNOSIS, TUTOPLAST_DIAGNOSES, diagnosisText, validateTutoplast } from './tutoplast';
+import { ISTENT_DIAGNOSIS, ORDER_KINDS, startingImplant, OTHER_DIAGNOSIS, TUTOPLAST_DIAGNOSES, diagnosisText, validateTutoplast } from './tutoplast';
 import { maybeOrderedNote, DEFAULT_ISTENT_EMAIL_BODY, DEFAULT_TUTOPLAST_EMAIL_BODY, tutoplastBody, tutoplastSubject } from './email';
 import type { Settings, TutoplastRequest } from './types';
 
@@ -7,7 +7,7 @@ const req: TutoplastRequest = {
   kind: 'tutoplast', maybeOrdered: false, eye: 'Left', name: 'CITIZEN, Jane', mrn: '1234567', vmo: '', surgeryDate: '',
   implant: 'Tutoplast', company: 'Tutogen', diagnosis: TUTOPLAST_DIAGNOSES[1],
 };
-const settings: Settings = { recipients: '', clinicianName: 'Dr Jo Bloggs', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' };
+const settings: Settings = { recipients: '', clinicianName: 'Dr Jo Bloggs', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast', implantChoice: {} };
 
 describe('tutoplast order', () => {
   it('maps the diagnosis dropdown to the form text', () => {
@@ -35,7 +35,7 @@ describe('tutoplast order', () => {
   });
 
   it('writes the iStent order', () => {
-    const { implant, company, diagnoses } = ORDER_KINDS.istent;
+    const { implants: [implant], company, diagnoses } = ORDER_KINDS.istent;
     const istent: TutoplastRequest = { ...req, kind: 'istent', implant, company, diagnosis: diagnoses[0] };
     expect(diagnoses).toEqual([ISTENT_DIAGNOSIS]);
     expect(validateTutoplast(istent, ISTENT_DIAGNOSIS)).toEqual([]);
@@ -56,5 +56,15 @@ describe('tutoplast order', () => {
     const today = new Date(2026, 9, 21);
     expect(tutoplastSubject({ ...istent, surgeryDate: '2026-10-23' }, today)).toBe('[URGENT] iStent order - MRN 1234567 - Left eye - surgery 23/10/2026');
     expect(tutoplastSubject({ ...istent, surgeryDate: '2026-12-23' }, today)).toBe('iStent order - MRN 1234567 - Left eye');
+  });
+
+  it('offers iStent inject W or infinite, remembering the last pick', () => {
+    expect(ORDER_KINDS.istent.implants).toEqual(['iStent inject W', 'iStent infinite']);
+    expect(startingImplant('istent', undefined)).toBe('iStent inject W');
+    expect(startingImplant('istent', 'iStent infinite')).toBe('iStent infinite');
+    expect(startingImplant('istent', 'something retired')).toBe('iStent inject W');
+    expect(startingImplant('tutoplast', 'iStent infinite')).toBe('Tutoplast');
+    const infinite: TutoplastRequest = { ...req, kind: 'istent', implant: 'iStent infinite', company: 'Glaukos', diagnosis: ISTENT_DIAGNOSIS };
+    expect(tutoplastBody(settings, infinite).split('\n')[1]).toBe('iStent infinite');
   });
 });

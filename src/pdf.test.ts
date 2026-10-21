@@ -13,14 +13,14 @@ const req: RequestData = {
 describe('order form', () => {
   it('fills the template without breaking it', async () => {
     const template = readFileSync(new URL('../public/forms/toric-lens-order-form.pdf', import.meta.url));
-    const out = await fillOrderForm(template, req, { recipients: '', clinicianName: 'Dr Test', contactNumber: '0400 000 000', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' as const }, new Date(2026, 9, 5));
+    const out = await fillOrderForm(template, req, { recipients: '', clinicianName: 'Dr Test', contactNumber: '0400 000 000', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' as const, implantChoice: {} }, new Date(2026, 9, 5));
     expect((await PDFDocument.load(out)).getPageCount()).toBe(1);
   });
 
   it('defaults the diagnosis and fills the form for short, blank and very long diagnoses', async () => {
     expect(DEFAULT_DIAGNOSIS).toBe('High cyl / astigmatism >2');
     const template = readFileSync(new URL('../public/forms/toric-lens-order-form.pdf', import.meta.url));
-    const settings = { recipients: '', clinicianName: 'Dr Test', contactNumber: '', vmo: '', lensPlatform: 'ZCU' as const, emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' as const };
+    const settings = { recipients: '', clinicianName: 'Dr Test', contactNumber: '', vmo: '', lensPlatform: 'ZCU' as const, emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' as const, implantChoice: {} };
     for (const diagnosis of [DEFAULT_DIAGNOSIS, '', 'Dense cataract\nwith high corneal astigmatism', 'word '.repeat(200)]) {
       const out = await fillOrderForm(template, { ...req, diagnosis }, settings, new Date(2026, 9, 5));
       expect((await PDFDocument.load(out)).getPageCount()).toBe(1);
@@ -41,7 +41,7 @@ describe('order form', () => {
 
   it('fills the tutoplast order on the same form', async () => {
     const template = readFileSync(new URL('../public/forms/toric-lens-order-form.pdf', import.meta.url));
-    const settings = { recipients: '', clinicianName: 'Dr Test', contactNumber: '', vmo: '', lensPlatform: 'ZCU' as const, emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' as const };
+    const settings = { recipients: '', clinicianName: 'Dr Test', contactNumber: '', vmo: '', lensPlatform: 'ZCU' as const, emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' as const, implantChoice: {} };
     const order = { kind: 'tutoplast' as const, maybeOrdered: false, eye: 'Right' as const, name: 'CITIZEN, Jane', mrn: '7654321', vmo: 'Dr Surgeon', surgeryDate: '', implant: 'Tutoplast', company: 'Tutogen' };
     for (const diagnosis of [...TUTOPLAST_DIAGNOSES, 'x '.repeat(300)]) {
       const out = await fillTutoplastForm(template, { ...order, diagnosis }, settings, new Date(2026, 9, 5));

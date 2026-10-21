@@ -65,7 +65,7 @@
       <label>iStent email text
         <textarea id="is-email-body" rows="8" autocomplete="off" spellcheck="true"></textarea>
       </label>
-      <p class="hint">Same placeholders; <code>{lens}</code> is the implant (iStent inject W).</p>
+      <p class="hint">Same placeholders; <code>{lens}</code> is the implant (iStent inject W or iStent infinite).</p>
       <button id="is-email-reset" type="button">Reset iStent email text to default</button>
       <button id="settings-done" class="primary" type="button">Done</button>
       <p id="build-info" class="hint"></p>
@@ -226,6 +226,7 @@
         <label id="tp-diagnosis-other-wrap" hidden>Diagnosis text
           <textarea id="tp-diagnosis-other" rows="3" autocomplete="off"></textarea>
         </label>
+        <fieldset id="tp-models" class="seg" hidden></fieldset>
         <label>Implant <input id="tp-implant" type="text" autocomplete="off" /></label>
         <label>Company <input id="tp-company" type="text" autocomplete="off" /></label>
         <label class="check"><input id="tp-maybe-ordered" type="checkbox" /> Not sure if it has already been ordered (nothing in the notes): say so in the email</label>

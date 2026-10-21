@@ -61,4 +61,6 @@ export interface Settings {
   istentEmailBody: string;
   /** Last order type used on the sticker tab. */
   orderKind: OrderKind;
+  /** Last implant model picked per order type (e.g. iStent inject W or iStent infinite). */
+  implantChoice: Partial<Record<OrderKind, string>>;
 }

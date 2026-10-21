@@ -11,12 +11,19 @@ export const OTHER_DIAGNOSIS = 'other';
 
 /**
  * The orders made from a patient sticker. They share the form, recipients and fields;
- * only these defaults differ. A single preset diagnosis is preselected.
+ * only these defaults differ. The first implant is the default; with more than one the
+ * user picks the model. A single preset diagnosis is preselected.
  */
-export const ORDER_KINDS: Record<OrderKind, { label: string; implant: string; company: string; diagnoses: readonly string[] }> = {
-  tutoplast: { label: 'Tutoplast', implant: 'Tutoplast', company: 'Tutogen', diagnoses: TUTOPLAST_DIAGNOSES },
-  istent: { label: 'iStent', implant: 'iStent inject W', company: 'Glaukos', diagnoses: [ISTENT_DIAGNOSIS] },
+export const ORDER_KINDS: Record<OrderKind, { label: string; implants: readonly string[]; company: string; diagnoses: readonly string[] }> = {
+  tutoplast: { label: 'Tutoplast', implants: ['Tutoplast'], company: 'Tutogen', diagnoses: TUTOPLAST_DIAGNOSES },
+  istent: { label: 'iStent', implants: ['iStent inject W', 'iStent infinite'], company: 'Glaukos', diagnoses: [ISTENT_DIAGNOSIS] },
 };
+
+/** The implant to start with: the user's last pick for this order type if it is still offered, else the default. */
+export function startingImplant(kind: OrderKind, last: string | undefined): string {
+  const { implants } = ORDER_KINDS[kind];
+  return last && implants.includes(last) ? last : implants[0];
+}
 
 /** The text for the Diagnosis box, from the dropdown value and the "Other" text. */
 export function diagnosisText(kind: OrderKind, choice: string, other: string): string {
