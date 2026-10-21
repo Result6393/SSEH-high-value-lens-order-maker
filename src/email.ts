@@ -3,8 +3,41 @@ import type { RequestData, Settings, TutoplastRequest } from './types';
 
 export const TORIC_THRESHOLD_D = 2;
 
-export function emailSubject(req: RequestData): string {
-  return `Toric IOL request - MRN ${req.mrn} - ${req.eye} eye`;
+/** Surgery this many days away or fewer marks the email urgent. */
+export const URGENT_DAYS = 7;
+
+/** Whole days from today to the surgery date (yyyy-mm-dd), or undefined if none is set. */
+export function daysUntil(surgeryDate: string, today: Date): number | undefined {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(surgeryDate);
+  if (!m) return undefined;
+  const surgery = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((surgery.getTime() - midnight.getTime()) / 86_400_000);
+}
+
+/** Surgery from today up to URGENT_DAYS ahead (a date in the past is taken as a typo, not urgent). */
+export function isUrgent(surgeryDate: string, today: Date): boolean {
+  const days = daysUntil(surgeryDate, today);
+  return days !== undefined && days >= 0 && days <= URGENT_DAYS;
+}
+
+/** Shown under the surgery date so the user knows before sending. */
+export function urgentNotice(surgeryDate: string, today: Date): string | undefined {
+  if (!isUrgent(surgeryDate, today)) return undefined;
+  const days = daysUntil(surgeryDate, today)!;
+  const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+  return `Surgery is ${when}: the email subject will start with [URGENT] and give the surgery date.`;
+}
+
+/** "[URGENT] <subject> - surgery dd/mm/yyyy" when surgery is within URGENT_DAYS, else the subject unchanged. */
+function withUrgency(subject: string, surgeryDate: string, today: Date): string {
+  if (!isUrgent(surgeryDate, today)) return subject;
+  const [y, m, d] = surgeryDate.split('-');
+  return `[URGENT] ${subject} - surgery ${d}/${m}/${y}`;
+}
+
+export function emailSubject(req: RequestData, today = new Date()): string {
+  return withUrgency(`Toric IOL request - MRN ${req.mrn} - ${req.eye} eye`, req.surgeryDate, today);
 }
 
 /**
@@ -71,14 +104,26 @@ export const DEFAULT_ISTENT_EMAIL_BODY = [
 ].join('\n');
 
 /** Subject for the sticker tab's orders (tutoplast or iStent). */
-export function tutoplastSubject(req: TutoplastRequest): string {
-  return `${req.kind === 'istent' ? 'iStent' : 'Tutoplast'} order - MRN ${req.mrn} - ${req.eye} eye`;
+export function tutoplastSubject(req: TutoplastRequest, today = new Date()): string {
+  return withUrgency(`${req.kind === 'istent' ? 'iStent' : 'Tutoplast'} order - MRN ${req.mrn} - ${req.eye} eye`, req.surgeryDate, today);
+}
+
+/** Added when the user isn't sure the implant was already ordered (nothing in the notes). */
+export function maybeOrderedNote(implant: string): string {
+  return `I'm not sure whether ${implant.trim() || 'this'} has already been ordered for this patient, as nothing is documented in the notes. Please disregard this order if it has.`;
 }
 
 export function tutoplastBody(settings: Settings, req: TutoplastRequest): string {
   const [custom, stock] =
     req.kind === 'istent' ? [settings.istentEmailBody, DEFAULT_ISTENT_EMAIL_BODY] : [settings.tutoplastEmailBody, DEFAULT_TUTOPLAST_EMAIL_BODY];
-  return render(custom, stock, settings, req, req.implant.trim());
+  const body = render(custom, stock, settings, req, req.implant.trim());
+  return req.maybeOrdered ? insertBeforeSignOff(body, maybeOrderedNote(req.implant)) : body;
+}
+
+/** Puts a paragraph before the last one (the sign-off), or at the end if there is only one. */
+function insertBeforeSignOff(body: string, paragraph: string): string {
+  const i = body.lastIndexOf('\n\n');
+  return i < 0 ? `${body}\n\n${paragraph}` : `${body.slice(0, i)}\n\n${paragraph}${body.slice(i)}`;
 }
 
 function render(custom: string, stock: string, settings: Settings, req: Pick<RequestData, 'name' | 'mrn'>, lens: string): string {

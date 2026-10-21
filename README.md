@@ -28,7 +28,11 @@ Choose **Tutoplast** or **iStent** at the top (remembered). For these orders (sa
 eye and pick the diagnosis from the dropdown ("IOP not controlled…", "Hypotony…", or **Other** with a
 text box). For iStent the diagnosis is preset to "Glaucoma with IOP not adequately controlled with maximal medical therapy", the implant to
 "iStent inject W" and the company to Glaukos (all editable). No biometry is needed. **Prepare email** attaches the filled form only (the sticker photo is
-not sent). The MRN is taken from the sticker's barcode; only if the barcode can't be read does it use the printed digits (and tells you to check every digit). The name is read from the printed text. Tutoplast and iStent each have their own email text in Settings.
+not sent; extra images are). The MRN is taken from the sticker's barcode; only if the barcode can't be read does it use the printed digits (and tells you to check every digit). The name is read from the printed text. Tutoplast and iStent each have their own email text in Settings.
+
+Add more photos under **More images** to attach them to the email (as on the toric tab). Tick **Not sure if it has already been ordered** when nothing is documented in the notes: the email then says so and asks the coordinators to disregard the order if one already exists.
+
+If the surgery date is within 7 days (on either tab), the email subject starts with **[URGENT]** and ends with the surgery date; a red note under the date tells you before you send.
 
 Switching between the Toric lens and Tutoplast / iStent tabs carries the patient's MRN, name, eye, VMO surgeon and surgery date across. **Next patient** clears both tabs.
 

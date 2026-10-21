@@ -131,6 +131,7 @@
       <p id="ast-warning" class="warning" hidden></p>
       <label>VMO surgeon <input id="vmo" type="text" autocomplete="off" /></label>
       <label>Proposed surgery date (optional) <input id="surgery-date" type="date" /></label>
+      <p id="urgent" class="warning" hidden></p>
       <label>Diagnosis (on the order form) <textarea id="diagnosis" rows="2" autocomplete="off"></textarea></label>
     </section>
 
@@ -189,6 +190,19 @@
         </div>
         <img id="tp-preview" alt="Patient sticker photo" hidden />
         <p id="tp-ocr-status" class="hint" hidden></p>
+
+        <h3>More images (optional)</h3>
+        <p class="hint">Added to the email as attachments (the sticker photo itself is not sent).</p>
+        <div class="row">
+          <label class="button">Take another
+            <input id="tp-extra-camera" type="file" accept="image/*" capture="environment" hidden />
+          </label>
+          <label class="button">Add images
+            <input id="tp-extra-library" type="file" accept="image/*" multiple hidden />
+          </label>
+        </div>
+        <ul id="tp-extras" class="thumbs"></ul>
+        <p id="tp-extras-status" class="hint" hidden></p>
       </section>
 
       <section>
@@ -197,6 +211,7 @@
         <label>Name <input id="tp-name" type="text" autocomplete="off" /></label>
         <label>VMO surgeon <input id="tp-vmo" type="text" autocomplete="off" /></label>
         <label>Proposed surgery date (optional) <input id="tp-surgery-date" type="date" /></label>
+        <p id="tp-urgent" class="warning" hidden></p>
       </section>
 
       <section>
@@ -213,6 +228,7 @@
         </label>
         <label>Implant <input id="tp-implant" type="text" autocomplete="off" /></label>
         <label>Company <input id="tp-company" type="text" autocomplete="off" /></label>
+        <label class="check"><input id="tp-maybe-ordered" type="checkbox" /> Not sure if it has already been ordered (nothing in the notes): say so in the email</label>
       </section>
 
       <section>

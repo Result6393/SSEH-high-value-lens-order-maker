@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ISTENT_DIAGNOSIS, ORDER_KINDS, OTHER_DIAGNOSIS, TUTOPLAST_DIAGNOSES, diagnosisText, validateTutoplast } from './tutoplast';
-import { DEFAULT_ISTENT_EMAIL_BODY, DEFAULT_TUTOPLAST_EMAIL_BODY, tutoplastBody, tutoplastSubject } from './email';
+import { maybeOrderedNote, DEFAULT_ISTENT_EMAIL_BODY, DEFAULT_TUTOPLAST_EMAIL_BODY, tutoplastBody, tutoplastSubject } from './email';
 import type { Settings, TutoplastRequest } from './types';
 
 const req: TutoplastRequest = {
-  kind: 'tutoplast', eye: 'Left', name: 'CITIZEN, Jane', mrn: '1234567', vmo: '', surgeryDate: '',
+  kind: 'tutoplast', maybeOrdered: false, eye: 'Left', name: 'CITIZEN, Jane', mrn: '1234567', vmo: '', surgeryDate: '',
   implant: 'Tutoplast', company: 'Tutogen', diagnosis: TUTOPLAST_DIAGNOSES[1],
 };
 const settings: Settings = { recipients: '', clinicianName: 'Dr Jo Bloggs', contactNumber: '', vmo: '', lensPlatform: 'ZCU', emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' };
@@ -44,5 +44,17 @@ describe('tutoplast order', () => {
     expect(tutoplastBody({ ...settings, tutoplastEmailBody: 'tutoplast text' }, istent)).toContain("iStent order form");
     expect(tutoplastBody({ ...settings, istentEmailBody: 'Re {lens}' }, istent)).toBe('Re iStent inject W');
     expect(DEFAULT_ISTENT_EMAIL_BODY).toContain('{name}');
+  });
+
+  it('says when the implant may already have been ordered, and marks urgent orders', () => {
+    const istent: TutoplastRequest = { ...req, kind: 'istent', implant: 'iStent inject W', company: 'Glaukos', diagnosis: ISTENT_DIAGNOSIS, maybeOrdered: true };
+    const note = maybeOrderedNote('iStent inject W');
+    expect(note).toContain('not sure whether iStent inject W has already been ordered');
+    expect(tutoplastBody(settings, istent)).toBe(`RE: CITIZEN, Jane 1234567\niStent inject W\n\nHi All,\n\nHere's an iStent order form.\n\n${note}\n\nAll the best,\nJo`);
+    expect(tutoplastBody({ ...settings, istentEmailBody: 'Just one line' }, istent)).toBe(`Just one line\n\n${note}`);
+    expect(tutoplastBody(settings, { ...istent, maybeOrdered: false })).not.toContain('not sure');
+    const today = new Date(2026, 9, 21);
+    expect(tutoplastSubject({ ...istent, surgeryDate: '2026-10-23' }, today)).toBe('[URGENT] iStent order - MRN 1234567 - Left eye - surgery 23/10/2026');
+    expect(tutoplastSubject({ ...istent, surgeryDate: '2026-12-23' }, today)).toBe('iStent order - MRN 1234567 - Left eye');
   });
 });

@@ -4,7 +4,9 @@ import { extractBiometry, type Extracted } from './extract';
 import { suggestLenses, type LensSuggestions } from './lens-table';
 import { LensMemory } from './lens-memory';
 import { FAMILIES, formatPower, inferEye, modelForCylinder, type Platform } from './lenses';
-import { prepareAttachment, prepareImage } from './image';
+import { prepareImage } from './image';
+import { initExtras } from './extras-ui';
+import { showUrgent } from './urgent-ui';
 import { readPrintout } from './ocr';
 import { DEFAULT_DIAGNOSIS, TEMPLATE_URL, fillOrderForm } from './pdf';
 import { loadSettings, saveSettings } from './settings';
@@ -42,6 +44,7 @@ const el = {
   astKLeft: input('astk-le'),
   vmo: input('vmo'),
   surgeryDate: input('surgery-date'),
+  urgent: $('urgent'),
   diagnosis: $<HTMLTextAreaElement>('diagnosis'),
   lensModel: $<HTMLSelectElement>('lens-model'),
   lensModelOther: input('lens-model-other'),
@@ -59,7 +62,6 @@ const patientInputs = [el.mrn, el.name, el.astKRight, el.astKLeft, el.surgeryDat
 
 // Patient state lives only in these variables and the form fields.
 let photo: Blob | undefined;
-let extras: { blob: Blob; url: string }[] = [];
 let previewUrl: string | undefined;
 let extracted: Extracted | undefined;
 /** Warnings shown under the MRN field: about the sticker read, and about the biometry's MRN. */
@@ -115,51 +117,7 @@ $('email-reset').addEventListener('click', () => (el.emailBody.value = DEFAULT_E
 $('tp-email-reset').addEventListener('click', () => (el.tpEmailBody.value = DEFAULT_TUTOPLAST_EMAIL_BODY));
 $('is-email-reset').addEventListener('click', () => (el.isEmailBody.value = DEFAULT_ISTENT_EMAIL_BODY));
 
-for (const picker of [el.extraCamera, el.extraLibrary]) {
-  picker.addEventListener('change', () => {
-    const files = [...(picker.files ?? [])];
-    picker.value = '';
-    if (files.length) void addExtras(files);
-  });
-}
-
-async function addExtras(files: File[]): Promise<void> {
-  const failed: string[] = [];
-  for (const file of files) {
-    try {
-      const blob = await prepareAttachment(file);
-      extras.push({ blob, url: URL.createObjectURL(blob) });
-    } catch {
-      failed.push(file.name || 'an image');
-    }
-  }
-  el.extrasStatus.hidden = !failed.length;
-  el.extrasStatus.textContent = failed.length ? `Couldn't read ${failed.join(', ')}.` : '';
-  prepared = undefined;
-  renderExtras();
-}
-
-function renderExtras(): void {
-  el.extras.replaceChildren(
-    ...extras.map((x, i) => {
-      const li = document.createElement('li');
-      const img = Object.assign(document.createElement('img'), { src: x.url, alt: `Extra image ${i + 1}` });
-      const remove = Object.assign(document.createElement('button'), {
-        type: 'button',
-        textContent: '×',
-        ariaLabel: `Remove extra image ${i + 1}`,
-      });
-      remove.addEventListener('click', () => {
-        URL.revokeObjectURL(x.url);
-        extras = extras.filter((e) => e !== x);
-        prepared = undefined;
-        renderExtras();
-      });
-      li.append(img, remove);
-      return li;
-    }),
-  );
-}
+const extras = initExtras({ camera: el.extraCamera, library: el.extraLibrary, list: el.extras, status: el.extrasStatus }, () => (prepared = undefined));
 
 for (const picker of [el.camera, el.library]) {
   picker.addEventListener('change', () => {
@@ -367,6 +325,7 @@ function refresh(): void {
   const warning = req && eligibilityWarning(req);
   el.astWarning.textContent = warning ?? '';
   el.astWarning.hidden = !warning;
+  showUrgent(el.urgent, el.surgeryDate.value);
   el.problems.replaceChildren(...problems.map((p) => Object.assign(document.createElement('li'), { textContent: p })));
   el.send.disabled = problems.length > 0;
 }
@@ -467,7 +426,7 @@ el.send.addEventListener('click', async () => {
   try {
     if (prepared?.key !== key) {
       if (req.vmo !== settings.vmo) saveSettings({ ...settings, vmo: (settings.vmo = req.vmo) });
-      prepared = { key: JSON.stringify([req, settings]), draft: await buildDraft(req, photo, extras.map((x) => x.blob)) };
+      prepared = { key: JSON.stringify([req, settings]), draft: await buildDraft(req, photo, extras.blobs()) };
     }
     const result = await shareEmail(prepared.draft);
     el.sendStatus.textContent = {
@@ -509,10 +468,7 @@ document.addEventListener(NEXT_PATIENT, () => {
   previewUrl = undefined;
   el.preview.removeAttribute('src');
   el.preview.hidden = true;
-  for (const x of extras) URL.revokeObjectURL(x.url);
-  extras = [];
-  renderExtras();
-  el.extrasStatus.hidden = true;
+  extras.reset();
   for (const i of patientInputs) i.value = '';
   el.diagnosis.value = DEFAULT_DIAGNOSIS; // free text may name the patient, so it is never saved
   mrnWarnings = {};

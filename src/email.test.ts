@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attachmentStem, eligibilityWarning, emailBody, emailSubject, joinName, lensText, patientName, validate } from './email';
+import { attachmentStem, daysUntil, eligibilityWarning, emailBody, emailSubject, isUrgent, joinName, urgentNotice, lensText, patientName, validate } from './email';
 import type { RequestData, Settings } from './types';
 
 const req: RequestData = {
@@ -49,5 +49,20 @@ describe('email', () => {
     // Only the operative eye is judged: the left eye is 1.10 D here.
     expect(eligibilityWarning({ ...req, eye: 'Left' })).toMatch(/1.10 D \(LE\)/);
     expect(eligibilityWarning({ ...req, eye: 'Left', astKLeft: '' })).toBeUndefined();
+  });
+
+  it('marks surgery within 7 days as urgent, with the date', () => {
+    const today = new Date(2026, 9, 21, 15, 30); // 21 Oct 2026, afternoon
+    expect(daysUntil('2026-10-28', today)).toBe(7);
+    expect(daysUntil('', today)).toBeUndefined();
+    expect(isUrgent('2026-10-21', today)).toBe(true);
+    expect(isUrgent('2026-10-28', today)).toBe(true);
+    expect(isUrgent('2026-10-29', today)).toBe(false);
+    expect(isUrgent('2026-10-20', today)).toBe(false); // past: a typo, not urgent
+    expect(isUrgent('', today)).toBe(false);
+    expect(emailSubject({ ...req, surgeryDate: '2026-10-24' }, today)).toBe('[URGENT] Toric IOL request - MRN 1234567 - Right eye - surgery 24/10/2026');
+    expect(emailSubject({ ...req, surgeryDate: '2026-11-24' }, today)).toBe('Toric IOL request - MRN 1234567 - Right eye');
+    expect(urgentNotice('2026-10-22', today)).toContain('tomorrow');
+    expect(urgentNotice('2026-11-22', today)).toBeUndefined();
   });
 });

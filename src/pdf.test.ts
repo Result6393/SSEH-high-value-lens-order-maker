@@ -42,7 +42,7 @@ describe('order form', () => {
   it('fills the tutoplast order on the same form', async () => {
     const template = readFileSync(new URL('../public/forms/toric-lens-order-form.pdf', import.meta.url));
     const settings = { recipients: '', clinicianName: 'Dr Test', contactNumber: '', vmo: '', lensPlatform: 'ZCU' as const, emailBody: '', tutoplastEmailBody: '', istentEmailBody: '', orderKind: 'tutoplast' as const };
-    const order = { kind: 'tutoplast' as const, eye: 'Right' as const, name: 'CITIZEN, Jane', mrn: '7654321', vmo: 'Dr Surgeon', surgeryDate: '', implant: 'Tutoplast', company: 'Tutogen' };
+    const order = { kind: 'tutoplast' as const, maybeOrdered: false, eye: 'Right' as const, name: 'CITIZEN, Jane', mrn: '7654321', vmo: 'Dr Surgeon', surgeryDate: '', implant: 'Tutoplast', company: 'Tutogen' };
     for (const diagnosis of [...TUTOPLAST_DIAGNOSES, 'x '.repeat(300)]) {
       const out = await fillTutoplastForm(template, { ...order, diagnosis }, settings, new Date(2026, 9, 5));
       const doc = await PDFDocument.load(out);

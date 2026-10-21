@@ -40,6 +40,8 @@ export interface TutoplastRequest {
   company: string;
   /** Free text for the order form's Diagnosis box. */
   diagnosis: string;
+  /** Not sure the implant was already ordered (nothing in the notes): the email says so. */
+  maybeOrdered: boolean;
 }
 
 /** Non-patient preferences, the only thing the app persists. */

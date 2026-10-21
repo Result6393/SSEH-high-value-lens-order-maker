@@ -1,6 +1,6 @@
 // The Tutoplast / iStent tab: patient sticker photo -> name/MRN -> order form + email.
 // Both orders share everything but the implant, company, diagnosis and email text (ORDER_KINDS).
-// Like the toric tab, patient data lives only in these variables and the form fields.
+// Like the toric tab, patient data (extra images included) lives only in these variables and the form fields.
 
 import { attachmentStem, tutoplastBody, tutoplastSubject } from './email';
 import { fillTutoplastForm } from './pdf';
@@ -9,6 +9,8 @@ import { saveSettings } from './settings';
 import { shareEmail, type EmailDraft } from './share';
 import { NEXT_PATIENT, type PatientDetails } from './patient';
 import { initStickerStep, stickerName } from './sticker-ui';
+import { initExtras } from './extras-ui';
+import { showUrgent } from './urgent-ui';
 import { ORDER_KINDS, OTHER_DIAGNOSIS, diagnosisText, validateTutoplast } from './tutoplast';
 import type { Eye, OrderKind, Settings, TutoplastRequest } from './types';
 
@@ -26,6 +28,8 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     name: input('tp-name'),
     vmo: input('tp-vmo'),
     surgeryDate: input('tp-surgery-date'),
+    urgent: $('tp-urgent'),
+    maybeOrdered: input('tp-maybe-ordered'),
     diagnosis: $<HTMLSelectElement>('tp-diagnosis'),
     otherWrap: $('tp-diagnosis-other-wrap'),
     other: $<HTMLTextAreaElement>('tp-diagnosis-other'),
@@ -82,11 +86,13 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
       implant: el.implant.value.trim(),
       company: el.company.value.trim(),
       diagnosis: diagnosisText(kind, el.diagnosis.value, el.other.value),
+      maybeOrdered: el.maybeOrdered.checked,
     };
   }
 
   function refresh(): void {
     el.otherWrap.hidden = el.diagnosis.value !== OTHER_DIAGNOSIS;
+    showUrgent(el.urgent, el.surgeryDate.value);
     const req = currentRequest();
     const problems = req ? validateTutoplast(req, el.diagnosis.value) : [];
     if (!req) problems.unshift('Choose the operative eye.');
@@ -106,6 +112,11 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
     refresh();
   });
 
+  const extras = initExtras(
+    { camera: input('tp-extra-camera'), library: input('tp-extra-library'), list: $<HTMLUListElement>('tp-extras'), status: $('tp-extras-status') },
+    () => (prepared = undefined),
+  );
+
   el.send.addEventListener('click', async () => {
     const req = currentRequest();
     if (!req) return;
@@ -120,7 +131,7 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
       el.sendStatus.textContent = {
         shared: 'Handed to the share sheet. Paste the addresses into To and send. Tap "Next patient" when done.',
         cancelled: 'Cancelled.',
-        fallback: "File sharing isn't supported here. The form was downloaded and a mail draft opened.",
+        fallback: "File sharing isn't supported here. The attachments were downloaded and a mail draft opened.",
       }[result];
     } catch (e) {
       el.sendStatus.textContent =
@@ -131,12 +142,16 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
   });
 
   async function buildDraft(req: TutoplastRequest): Promise<EmailDraft> {
+    const stem = attachmentStem(req);
     const pdf = await fillTutoplastForm(await template, req, settings, new Date());
     return {
       to: settings.recipients,
       subject: tutoplastSubject(req),
       body: tutoplastBody(settings, req),
-      files: [new File([new Uint8Array(pdf)], `High_cost_order_${req.kind}_${attachmentStem(req)}.pdf`, { type: 'application/pdf' })],
+      files: [
+        new File([new Uint8Array(pdf)], `High_cost_order_${req.kind}_${stem}.pdf`, { type: 'application/pdf' }),
+        ...extras.blobs().map((b, i) => new File([b], `Image_${i + 1}_${stem}.jpg`, { type: 'image/jpeg' })),
+      ],
     };
   }
 
@@ -144,6 +159,8 @@ export function initTutoplast(opts: { settings: Settings; template: Promise<Arra
   document.addEventListener(NEXT_PATIENT, () => {
     prepared = undefined;
     sticker.reset();
+    extras.reset();
+    el.maybeOrdered.checked = false;
     for (const i of [el.mrn, el.name, el.surgeryDate]) i.value = '';
     applyKind(); // keeps the order type, resets its implant, company and diagnosis
     document.querySelectorAll<HTMLInputElement>('input[name="tp-eye"]').forEach((r) => (r.checked = false));
