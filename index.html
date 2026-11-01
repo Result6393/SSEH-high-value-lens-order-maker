@@ -41,7 +41,8 @@
   <main>
     <section id="settings" hidden>
       <h2>Settings</h2>
-      <p class="hint">Saved on this phone only. No patient data is ever saved.</p>
+      <p class="hint">Saved on this device, and synced to your other devices if you sign in below. No patient data is ever saved or synced.</p>
+      <div id="sync-slot"></div>
       <label>Send to (lens coordinators' emails; paste a list from Outlook if you like)
         <textarea id="recipients" rows="4" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
       </label>
@@ -242,6 +243,6 @@
       </section>
     </div>
   </main>
-  <script type="module" src="/src/main.ts"></script>
+  <script type="module" src="/src/boot.ts"></script>
 </body>
 </html>

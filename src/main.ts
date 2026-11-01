@@ -9,7 +9,8 @@ import { initExtras } from './extras-ui';
 import { showUrgent } from './urgent-ui';
 import { readPrintout } from './ocr';
 import { DEFAULT_DIAGNOSIS, TEMPLATE_URL, fillOrderForm } from './pdf';
-import { loadSettings, saveSettings } from './settings';
+import { KEY, loadSettings, saveSettings, SYNC_APP } from './settings';
+import { mountSyncControl } from './sync.js';
 import { parseRecipients } from './recipients';
 import { NEXT_PATIENT, type PatientDetails } from './patient';
 import { initStickerStep, stickerName } from './sticker-ui';
@@ -79,6 +80,7 @@ document.title = `SSEH Orders v${__APP_VERSION__}`;
 el.diagnosis.value = DEFAULT_DIAGNOSIS;
 
 const settings = loadSettings();
+mountSyncControl($('sync-slot'), SYNC_APP, KEY, () => location.reload());
 el.recipients.value = settings.recipients;
 el.clinician.value = settings.clinicianName;
 el.contact.value = settings.contactNumber;
